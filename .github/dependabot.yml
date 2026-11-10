@@ -12,3 +12,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # `dtolnay/rust-toolchain@1.85.0` pins the MSRV, not the action version.
+    # Dependabot reads it as an action bump and raises the MSRV silently.
+    ignore:
+      - dependency-name: "dtolnay/rust-toolchain"
