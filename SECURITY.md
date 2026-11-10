@@ -9,7 +9,7 @@ No release has been published yet. Unreleased `main` receives best-effort review
 
 ## Reporting a vulnerability
 
-**Do not open a public issue, discussion, or pull request for a vulnerability.** Use [GitHub Security Advisories](https://github.com/Andhiki/simaster/security/advisories/new) with the affected version or commit, command, flag, platform, a minimal reproduction with secrets and personal data removed, the observed impact, and whether you can test a fix. If advisories are unavailable, contact a maintainer privately through the address on their GitHub profile. Do not include credentials in the first message.
+**Do not open a public issue, discussion, or pull request for a vulnerability.** Use [GitHub Security Advisories](https://github.com/pendopo-dev/simaster/security/advisories/new) with the affected version or commit, command, flag, platform, a minimal reproduction with secrets and personal data removed, the observed impact, and whether you can test a fix. If advisories are unavailable, contact a maintainer privately through the address on their GitHub profile. Do not include credentials in the first message.
 
 ## Response targets
 

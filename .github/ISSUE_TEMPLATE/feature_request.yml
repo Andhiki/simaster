@@ -6,8 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Read the [milestones](https://github.com/Andhiki/simaster/milestones) and
-        [`GOVERNANCE.md`](https://github.com/Andhiki/simaster/blob/main/GOVERNANCE.md)
+        Read
+        [`GOVERNANCE.md`](https://github.com/pendopo-dev/simaster/blob/main/GOVERNANCE.md)
+        and the [open issues](https://github.com/pendopo-dev/simaster/issues)
         first. Authentication, write, breaking, and governance changes need an
         RFC with a 7-day comment window.
 
@@ -45,19 +46,6 @@ body:
         - Release, CI, or governance
     validations:
       required: true
-  - type: dropdown
-    id: milestone
-    attributes:
-      label: Suggested milestone
-      options:
-        - M2 — Auth and identity
-        - M3 — Read commands
-        - M4 — Agent surface
-        - M5 — Write operations
-        - M6 — Release and partnership
-        - Unsure
-    validations:
-      required: true
   - type: checkboxes
     id: checks
     attributes:
@@ -65,7 +53,7 @@ body:
       options:
         - label: I searched existing issues and discussions.
           required: true
-        - label: I read the roadmap and governance documents.
+        - label: I read the governance and contribution documents.
           required: true
         - label: This request does not require sharing another person's credentials or data.
           required: true

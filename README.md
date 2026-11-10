@@ -8,7 +8,7 @@ over a web UI.
 shell completions are available; authentication and SIMASTER data commands are
 not implemented.
 
-[![CI](https://github.com/Andhiki/simaster/actions/workflows/ci.yml/badge.svg)](https://github.com/Andhiki/simaster/actions/workflows/ci.yml)
+[![CI](https://github.com/pendopo-dev/simaster/actions/workflows/ci.yml/badge.svg)](https://github.com/pendopo-dev/simaster/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85-blue.svg)](Cargo.toml)
 
@@ -27,7 +27,7 @@ not implemented.
 No release has been published. Build from source:
 
 ```bash
-cargo install --git https://github.com/Andhiki/simaster
+cargo install --git https://github.com/pendopo-dev/simaster
 ```
 
 Rust 1.85 or newer is required. The crate uses edition 2024.

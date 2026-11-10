@@ -19,7 +19,7 @@ No SIMASTER account is needed. The test suite is offline.
 ## Setup and commands
 
 ```bash
-git clone https://github.com/Andhiki/simaster
+git clone https://github.com/pendopo-dev/simaster
 cd simaster
 cargo build
 ```
