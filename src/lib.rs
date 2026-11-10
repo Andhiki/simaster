@@ -8,15 +8,16 @@ pub mod config;
 pub mod error;
 pub mod output;
 
-use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
 use crate::cli::Cli;
 use crate::error::Error;
 
-/// Parse arguments, initialize logging, and dispatch the selected command.
-pub fn run() -> Result<(), Error> {
-    let cli = Cli::parse();
+/// Initialize logging and dispatch the selected command.
+///
+/// The caller owns argument parsing, so a second front end can drive the same
+/// core without fabricating a command line.
+pub fn run_with(cli: Cli) -> Result<(), Error> {
     init_tracing(cli.verbose);
     cli::run(cli)
 }
