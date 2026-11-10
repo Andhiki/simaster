@@ -1,0 +1,94 @@
+name: Authentication issue
+description: Report a reproducible authentication problem without sharing credentials.
+title: "auth: "
+labels: ["area:auth", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Authentication reports are sensitive. **Never paste a password, cookie,
+        access token, refresh token, authorization code, or client secret.** Use
+        placeholders such as `<token>` and `<cookie>`.
+
+        If this is a vulnerability, use the private Security Advisory link
+        instead of this form.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `simaster --version`.
+      placeholder: "simaster 0.1.0-alpha.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: Authentication method
+      options:
+        - auto
+        - web
+        - sso (CAS)
+        - vnext (OAuth)
+        - browser SSO
+        - cookie import
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: The exact command, with the username replaced by `<username>`.
+      placeholder: "simaster auth login --method web --username <username>"
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom and error
+      description: The sanitized error message and exit code.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps with credentials and personal data removed.
+    validations:
+      required: true
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Credential storage
+      options:
+        - OS keyring
+        - File fallback (0600)
+        - Not sure
+        - Not applicable
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction checklist
+      options:
+        - label: I removed passwords, cookies, tokens, authorization codes, and client secrets.
+          required: true
+        - label: I removed names, NIU numbers, and other personal data.
+          required: true
+        - label: I did not include the official mobile app's client ID or embedded secret.
+          required: true
+        - label: I used only my own account.
+          required: true
+        - label: This is not a security vulnerability; security reports use GitHub Security Advisories.
+          required: true

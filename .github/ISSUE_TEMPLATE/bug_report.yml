@@ -1,0 +1,83 @@
+name: Bug report
+description: Report a reproducible defect in simaster.
+title: "bug: "
+labels: ["type:bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Include the exact command and a minimal
+        reproduction.
+
+        **Do not include passwords, cookies, tokens, authorization codes, real
+        names, NIU numbers, grades, schedules, or other personal data.** If this
+        is a security vulnerability, use the private Security Advisory link
+        instead of this form.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `simaster --version`.
+      placeholder: "simaster 0.1.0-alpha.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: The command, the observed behavior, and the exit code.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Steps another person can follow without your account or data.
+      placeholder: |
+        1. Run ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove credentials, tokens, cookies, and personal data before pasting.
+      render: shell
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction checklist
+      options:
+        - label: I removed passwords, cookies, tokens, and authorization codes.
+          required: true
+        - label: I removed names, NIU numbers, grades, schedules, and other personal data.
+          required: true
+        - label: I did not include the official mobile app's client ID or client secret.
+          required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This is not a security vulnerability; security reports go to GitHub Security Advisories.
+          required: true

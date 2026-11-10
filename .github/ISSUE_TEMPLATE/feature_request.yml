@@ -1,0 +1,73 @@
+name: Feature request
+description: Propose a new capability or a behavior change.
+title: "feature: "
+labels: ["type:feature", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [`docs/ROADMAP.md`](https://github.com/Andhiki/simaster/blob/main/docs/ROADMAP.md)
+        and [`GOVERNANCE.md`](https://github.com/Andhiki/simaster/blob/main/GOVERNANCE.md)
+        first. Authentication, write, breaking, and governance changes need an
+        RFC with a 7-day comment window.
+
+        Do not include credentials, tokens, or real student data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what blocks you today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: The command, flag, JSON field, or workflow you want.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing commands, scripts, or a smaller change that could work.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI grammar or output
+        - Authentication
+        - API endpoint or adapter
+        - Documentation
+        - Agent or MCP surface
+        - Write operation
+        - Release, CI, or governance
+    validations:
+      required: true
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Suggested milestone
+      options:
+        - M2 — Auth and identity
+        - M3 — Read commands
+        - M4 — Agent surface
+        - M5 — Write operations
+        - M6 — Release and partnership
+        - Unsure
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and discussions.
+          required: true
+        - label: I read the roadmap and governance documents.
+          required: true
+        - label: This request does not require sharing another person's credentials or data.
+          required: true
+        - label: I did not include secrets or real student data in this request.
+          required: true

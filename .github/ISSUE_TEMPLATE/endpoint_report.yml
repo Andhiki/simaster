@@ -1,0 +1,107 @@
+name: Endpoint report
+description: Report endpoint evidence, drift, or a proposed read-only adapter.
+title: "api: "
+labels: ["area:api", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for sanitized endpoint evidence. Do not test another
+        person's account, do not probe production for vulnerabilities, and do
+        not include cookies, tokens, client secrets, names, NIU numbers, or
+        other personal data.
+
+        If this is a security issue, stop and use the private Security Advisory
+        link instead.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Web session
+        - vNext gateway
+        - vNext OAuth
+        - Legacy presensi
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: HTTP method
+      options:
+        - GET
+        - POST
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: path
+    attributes:
+      label: Path
+      description: Host and path only; omit query values and identifiers.
+      placeholder: "https://api.simaster.ugm.ac.id/v1/student/micro/services"
+    validations:
+      required: true
+  - type: input
+    id: service
+    attributes:
+      label: Service label or operation
+      description: For a gateway call, the `service` value. Do not include a real identifier.
+      placeholder: "get_student_profil_by_niu"
+  - type: textarea
+    id: observation
+    attributes:
+      label: Observation
+      description: What changed or what did you observe? Include status codes and sanitized field names.
+    validations:
+      required: true
+  - type: textarea
+    id: provenance
+    attributes:
+      label: Provenance
+      description: Public documentation, static analysis, or an authorized live test with your own account. Include the date and the evidence type.
+    validations:
+      required: true
+  - type: dropdown
+    id: live-tested
+    attributes:
+      label: Live-tested?
+      options:
+        - "No — static analysis or prior art only (unverified)"
+        - "Yes — authorized test with my own account"
+        - "Yes — public documentation only"
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-fixture
+    attributes:
+      label: Sanitized request and response
+      description: Replace all identifiers and personal values with documented placeholders.
+      render: json
+  - type: dropdown
+    id: stability
+    attributes:
+      label: Proposed stability
+      options:
+        - unverified
+        - experimental
+        - stable
+        - blocked
+    validations:
+      required: true
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction and authorization checklist
+      options:
+        - label: I removed passwords, cookies, tokens, authorization codes, and client secrets.
+          required: true
+        - label: I removed names, NIU numbers, grades, schedules, GPS, and other personal data.
+          required: true
+        - label: I used only my own account for any live test.
+          required: true
+        - label: I did not test a write endpoint, bypass a control, or run a load test.
+          required: true
+        - label: I did not include the official mobile app's client ID or embedded secret.
+          required: true
