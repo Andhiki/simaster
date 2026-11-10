@@ -158,8 +158,7 @@ has at least two reviewers.
 ## UGM ID client registration
 
 The browser PKCE path depends on a UGM ID client registered by DTI UGM. This is
-an upstream task, tracked as U0 in [`ROADMAP.md`](ROADMAP.md), not a repository
-setting.
+an upstream task, tracked in the [M2 milestone](https://github.com/Andhiki/simaster/milestone/1), not a repository setting.
 
 - **Contact:** `dti@ugm.ac.id` (from the UGM ID portal's `mailto:` link).
 - **Portal instruction:** contact DTI to register the application's `client_id`

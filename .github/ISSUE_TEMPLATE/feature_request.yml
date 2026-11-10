@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Read [`docs/ROADMAP.md`](https://github.com/Andhiki/simaster/blob/main/docs/ROADMAP.md)
-        and [`GOVERNANCE.md`](https://github.com/Andhiki/simaster/blob/main/GOVERNANCE.md)
+        Read the [milestones](https://github.com/Andhiki/simaster/milestones) and
+        [`GOVERNANCE.md`](https://github.com/Andhiki/simaster/blob/main/GOVERNANCE.md)
         first. Authentication, write, breaking, and governance changes need an
         RFC with a 7-day comment window.
 

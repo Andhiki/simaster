@@ -232,6 +232,6 @@ permission without the same review a human change would receive.
 - [GOVERNANCE.md](GOVERNANCE.md) — roles, consensus, RFCs.
 - [SECURITY.md](SECURITY.md) — vulnerability reporting and credential rules.
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community standards.
-- [docs/ROADMAP.md](docs/ROADMAP.md) — milestones and current priorities.
+- [Milestones](https://github.com/Andhiki/simaster/milestones) — phases and current priorities.
 - [docs/CLI-CONTRACT.md](docs/CLI-CONTRACT.md) — the command and output contract.
 - [docs/API-MAP.md](docs/API-MAP.md) — endpoint evidence and stability.

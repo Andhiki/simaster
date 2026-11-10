@@ -41,8 +41,8 @@ available now:
 
 `simaster auth ...`, `simaster whoami`, and `simaster profile show` are the M2
 profile proof of concept. `auth` and `profile` are registered commands but return
-a clear `not implemented` error today; `whoami` is not registered yet. See
-[`docs/ROADMAP.md`](docs/ROADMAP.md).
+a clear `not implemented` error today; `whoami` is not registered yet. See the
+[M2 milestone](https://github.com/Andhiki/simaster/milestone/1).
 
 ## Install
 
@@ -222,7 +222,7 @@ and PKCE verifiers are never logged.
 | [`docs/AUTH.md`](docs/AUTH.md) | Authentication options, flows, endpoints, threat model. |
 | [`docs/API-MAP.md`](docs/API-MAP.md) | Level map, endpoint registry, gateway envelope, service labels, stability. |
 | [`docs/CLI-CONTRACT.md`](docs/CLI-CONTRACT.md) | Command grammar, flags, JSON envelope, exit codes, env vars. |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Milestones M0–M6, U0 registration track, exit criteria, non-goals. |
+| [Milestones](https://github.com/Andhiki/simaster/milestones) | M2–M6 phases, their issues, and exit criteria. |
 | [`docs/REPO-SETUP.md`](docs/REPO-SETUP.md) | Repository settings runbook and UGM ID registration checklist. |
 | [`docs/adr/0001-single-crate.md`](docs/adr/0001-single-crate.md) | Why the project starts as one crate. |
 | [`docs/adr/0002-auth-strategy.md`](docs/adr/0002-auth-strategy.md) | Why UGM ID PKCE is primary and web remains the fallback. |
