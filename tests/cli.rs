@@ -36,6 +36,19 @@ fn doctor_json_has_stable_envelope_and_version() {
 }
 
 #[test]
+fn auth_login_help_exposes_browser_methods_without_vnext() {
+    simaster()
+        .args(["auth", "login", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("auto"))
+        .stdout(predicate::str::contains("browser"))
+        .stdout(predicate::str::contains("web"))
+        .stdout(predicate::str::contains("sso"))
+        .stdout(predicate::str::contains("vnext").not());
+}
+
+#[test]
 fn auth_login_reports_not_implemented() {
     simaster()
         .args(["auth", "login", "--username", "test"])

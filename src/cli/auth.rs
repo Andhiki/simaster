@@ -13,15 +13,19 @@ pub struct Auth {
 enum AuthCommand {
     /// Sign in to SIMASTER.
     Login {
-        /// Authentication method. `auto` prefers the web session flow.
+        /// Authentication method.
+        ///
+        /// `auto` uses browser PKCE when `SIMASTER_CLIENT_ID` is configured;
+        /// otherwise it falls back to the web session and CAS.
+        /// `browser` requires `SIMASTER_CLIENT_ID`.
         #[arg(long, value_enum, default_value = "auto")]
         method: LoginMethod,
 
-        /// UGM username.
+        /// UGM username for the web session fallback.
         #[arg(long)]
         username: Option<String>,
 
-        /// Read the password from stdin instead of prompting.
+        /// Read the web-fallback password from stdin instead of prompting.
         #[arg(long)]
         password_stdin: bool,
     },
@@ -36,9 +40,9 @@ enum AuthCommand {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum LoginMethod {
     Auto,
-    Sso,
+    Browser,
     Web,
-    Vnext,
+    Sso,
 }
 
 /// Run an authentication command.
