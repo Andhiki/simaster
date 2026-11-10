@@ -7,8 +7,8 @@ body:
     attributes:
       value: |
         Authentication reports are sensitive. **Never paste a password, cookie,
-        access token, refresh token, authorization code, or client secret.** Use
-        placeholders such as `<token>` and `<cookie>`.
+        access token, refresh token, ID token, authorization code, PKCE verifier,
+        or client secret.** Use placeholders such as `<token>` and `<cookie>`.
 
         If this is a vulnerability, use the private Security Advisory link
         instead of this form.
@@ -26,12 +26,37 @@ body:
       label: Authentication method
       options:
         - auto
-        - web
+        - browser (UGM ID OAuth2 + PKCE)
+        - web (session)
         - sso (CAS)
-        - vnext (OAuth)
-        - browser SSO
-        - cookie import
+        - cookie import (not scheduled)
         - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: client-id
+    attributes:
+      label: Is SIMASTER_CLIENT_ID configured?
+      description: Answer yes/no only. Do not paste the client ID or a client secret.
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: pkce-step
+    attributes:
+      label: Browser PKCE step
+      description: Where did the browser flow stop?
+      options:
+        - Not applicable (web or SSO fallback)
+        - Opening the authorization URL
+        - CAS SSO or consent
+        - Loopback callback or state check
+        - Token exchange
+        - ID-token validation
+        - Not sure
     validations:
       required: true
   - type: dropdown
@@ -82,11 +107,11 @@ body:
     attributes:
       label: Redaction checklist
       options:
-        - label: I removed passwords, cookies, tokens, authorization codes, and client secrets.
+        - label: I removed passwords, cookies, access/refresh/ID tokens, authorization codes, PKCE verifiers, and client secrets.
           required: true
         - label: I removed names, NIU numbers, and other personal data.
           required: true
-        - label: I did not include the official mobile app's client ID or embedded secret.
+        - label: I did not include the official mobile app's client ID, embedded secret, or custom-scheme redirect.
           required: true
         - label: I used only my own account.
           required: true

@@ -112,7 +112,8 @@ Keep commits atomic. Do not mix formatting-only churn with behavior changes.
   `assert_cmd` and `predicates`.
 - **Fixtures** live under `tests/fixtures/` when they are added. They must be
   sanitized: no real names, NIU numbers, cookies, tokens, or passwords.
-- **HTTP tests** use `wiremock` or another local mock once HTTP lands. PR CI
+- **HTTP tests** use `wiremock` or another local mock once HTTP lands. Auth
+  tests mock discovery, the token endpoint, JWKS, and the user endpoints. PR CI
   must never contact `simaster.ugm.ac.id`, `sso.ugm.ac.id`,
   `oauth.simaster.ugm.ac.id`, or `api.simaster.ugm.ac.id`.
 - **Canary tests** are scheduled jobs that optionally use a maintainer's own
@@ -124,27 +125,33 @@ behavior assertions over implementation details. If a test cannot be written
 without a live server, use a sanitized fixture and mark the behavior
 `unverified`.
 
+Authentication changes need an independent security review before merge. The
+review covers PKCE, `state`, `nonce`, loopback binding, ID-token validation,
+token storage, redaction, and the public-client logout limitation.
+
 ## Endpoint pull requests
 
 An endpoint addition or change must include:
 
-1. An update to [`docs/API-MAP.md`](docs/API-MAP.md) with the surface, method,
-   path, auth, request shape, response shape, provenance, stability, and
+1. An update to [`docs/API-MAP.md`](docs/API-MAP.md) with the level, surface,
+   method, path, auth, request shape, response shape, provenance, stability, and
    live-tested status.
 2. A sanitized fixture (request and response) with credentials, identifiers,
    and personal data removed or replaced with documented placeholders.
 3. A contract test that exercises the adapter against the fixture. The test
    must not contact production.
-4. Provenance: where the evidence came from (public documentation, static
-   analysis, an authorized test account, or a live capture) and the date it was
-   observed.
+4. Provenance: where the evidence came from and the date it was observed.
+   Official UGM ID OpenAPI/Swagger, OIDC discovery, and portal documentation
+   are primary evidence; see [`docs/UGM-ID-API.md`](docs/UGM-ID-API.md).
+   Prior-art static analysis is secondary and must be labelled as such.
 5. A stability statement: `unverified`, `experimental`, `stable`, or
    `blocked`, and what would make it change.
 
 Do not include the mobile app's client ID, embedded client secret, tokens,
-cookies, or real student data. Placeholders such as `<client-id>` and `<niu>`
-are acceptable. A write endpoint needs an RFC, two approvals, a dry-run path,
-and an explicit opt-in flag before it can be merged.
+cookies, authorization codes, PKCE verifiers, the mobile custom-scheme redirect
+as a usable credential, or real student data. Placeholders such as
+`<client-id>` and `<niu>` are acceptable. A write endpoint needs an RFC, two
+approvals, a dry-run path, and an explicit opt-in flag before it can be merged.
 
 ## Pull requests
 

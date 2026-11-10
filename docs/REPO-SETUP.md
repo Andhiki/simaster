@@ -56,6 +56,7 @@ triage policy.
 | `area:api` | Endpoint adapters, API map, fixtures, or upstream drift. | `1d76db` |
 | `area:cli` | Command grammar, flags, output, completions. | `0e8a16` |
 | `area:security` | Security-sensitive change; requires the security review path. | `b60205` |
+| `area:upstream` | UGM ID registration, DTI coordination, or upstream API dependency. | `006b75` |
 | `good first issue` | Scoped, documented, and suitable for a first contribution. | `7057ff` |
 | `help wanted` | Maintainers want a contributor to take it. | `008672` |
 | `needs-triage` | Not yet assessed by a maintainer. | `fbca04` |
@@ -68,12 +69,13 @@ enough to be usable.
 
 ## Milestones
 
-| Milestone | Description | State after this wave |
+| Milestone | Description | State |
 |---|---|---|
 | M0 — Documentation | Docs, governance, templates, ADRs. | Close when merged. |
 | M1 — Skeleton and CI | Rust crate, doctor, completions, tests, CI. | Close when CI is green on GitHub. |
-| M2 — Auth and identity | Web/CAS login, storage, status, logout, whoami. | Open. |
-| M3 — Read commands | Profile, schedule, grades, attendance, fixtures, canary. | Open. |
+| U0 — UGM ID registration | DTI client registration, redirect URI, scopes, dev client. | Open; blocked:upstream until DTI responds. |
+| M2 — UGM ID login and profile | Browser PKCE, web/CAS fallback, storage, status, logout, whoami, profile show. | Open; PKCE path blocked:upstream until U0. |
+| M3 — Data commands | Schedule, grades, attendance, fixtures, canary. | Open. |
 | M4 — Agent surface | JSONL, `--no-input`, read-only API, MCP server. | Open. |
 | M5 — Write operations | Opt-in writes, dry-run, confirmation, audit. | Open. |
 | M6 — Release and partnership | release-plz, packages, docs site, UGM engagement. | Open. |
@@ -152,6 +154,46 @@ example:
 Do not guess an organization name. Create the team first, then update the file
 in a reviewed PR. The auth and API paths require both maintainers until a team
 has at least two reviewers.
+
+## UGM ID client registration
+
+The browser PKCE path depends on a UGM ID client registered by DTI UGM. This is
+an upstream task, tracked as U0 in [`ROADMAP.md`](ROADMAP.md), not a repository
+setting.
+
+- **Contact:** `dti@ugm.ac.id` (from the UGM ID portal's `mailto:` link).
+- **Portal instruction:** contact DTI to register the application's `client_id`
+  and `redirect_uri`.
+- **Requested client:** public/native, `token_endpoint_auth_method=none` if
+  allowed for a new client, `authorization_code` + `refresh_token`, PKCE S256,
+  redirect URIs `http://127.0.0.1:53682/callback` and, if allowed,
+  `http://localhost:53682/callback`, scopes
+  `openid profile email user.read userDetail.read`.
+- **Development client:** a separate client on
+  `https://oauth.dev.ugm.ac.id`, if DTI allows it.
+- **Ready-to-send email:** English and Indonesian versions are in
+  [`UGM-ID-API.md`](UGM-ID-API.md).
+- **No dynamic registration:** discovery has no `registration_endpoint`; the
+  client must be registered manually.
+- **If DTI requires a confidential client:** do not store a secret in the
+  repository or ship one in the binary. Keep the web session + CAS fallback,
+  allow a user-registered client from the environment/keyring, or revisit a
+  backend-for-frontend in an RFC.
+
+Acceptance criteria for U0:
+
+1. A `client_id` and at least one loopback redirect URI are registered.
+2. DTI confirms whether `none` is allowed for a new public client.
+3. The granted scopes are recorded.
+4. Rate limits and token lifetimes are documented.
+5. A development client exists, or the absence is recorded.
+6. The result is recorded in `API-MAP.md` and the `blocked:upstream` label is
+   removed or kept with a reason.
+
+Use the `area:upstream` label for the tracking issue and `blocked:upstream`
+while waiting on DTI. Do not create a repository secret for a client ID; it is
+not a secret. Never store a confidential client secret in a repository secret
+unless the owner has approved a narrowly scoped, documented use.
 
 ## Environment and secrets
 

@@ -39,9 +39,10 @@ available now:
   and Elvish.
 - `simaster --help`, `simaster --version`.
 
-`simaster auth ...` and `simaster profile show` are registered commands but
-return a clear `not implemented` error. Their real behavior is planned for M2
-and M3. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+`simaster auth ...`, `simaster whoami`, and `simaster profile show` are the M2
+profile proof of concept. `auth` and `profile` are registered commands but return
+a clear `not implemented` error today; `whoami` is not registered yet. See
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Install
 
@@ -69,16 +70,18 @@ Rust 1.85 or newer is required. The crate uses edition 2024.
 simaster doctor
 simaster doctor --json | jq .
 
-# Planned for M2: sign in with the web session flow, with CAS fallback.
+# Planned for M2: browser OAuth2 + PKCE when a DTI-registered client ID is set.
+export SIMASTER_CLIENT_ID="<client-id>"
 simaster auth login
-
-# Planned for M3: read the authenticated student's profile.
+simaster whoami
 simaster profile show
 ```
 
-`doctor` is entirely offline. It never contacts SIMASTER. The auth and profile
-commands are marked **planned** and currently fail with exit code 1 and
-`not implemented`.
+`doctor` is entirely offline. It never contacts SIMASTER. The auth, whoami, and
+profile commands are marked **planned** and currently fail with exit code 1 and
+`not implemented`; `whoami` is not in the M1 command tree yet. Without
+`SIMASTER_CLIENT_ID`, `auth login --method auto` uses the web session with CAS
+fallback instead of the browser PKCE flow.
 
 ## Commands
 
@@ -87,12 +90,12 @@ commands are marked **planned** and currently fail with exit code 1 and
 | `simaster doctor` | available | Offline environment and config checks. |
 | `simaster doctor --json` | available | Stable envelope, `schema_version: 1`. |
 | `simaster completions <shell>` | available | `bash`, `zsh`, `fish`, `powershell`, `elvish`. |
-| `simaster auth login` | planned (M2) | Web session first, CAS fallback. Returns not implemented now. |
-| `simaster auth status` | planned (M2) | Reports the stored session. Returns not implemented now. |
-| `simaster auth logout` | planned (M2) | Removes stored credentials and sessions. Returns not implemented now. |
-| `simaster whoami` | planned (M2) | Shows the authenticated identity. |
-| `simaster profile show` | planned (M3) | Profile read; returns not implemented now. |
-| `simaster schedule today` | planned (M3) | Today's schedule. |
+| `simaster auth login` | planned (M2) | Browser PKCE primary; web session + CAS fallback. Returns not implemented now. |
+| `simaster auth status` | planned (M2) | Provider, username, scopes, expiry, storage; never token values. |
+| `simaster auth logout` | planned (M2) | Local delete + browser logout when possible; reports partial revocation. |
+| `simaster whoami` | planned (M2) | Identity via UGM ID `/api/me`. |
+| `simaster profile show` | planned (M2) | Full profile via UGM ID `/user/me`. |
+| `simaster schedule today` | planned (M3) | Today's schedule, using a data adapter. |
 | `simaster schedule week` | planned (M3) | One week of schedule. |
 | `simaster grades list` | planned (M3) | Study results by semester. |
 | `simaster attendance summary` | planned (M3) | Attendance recap. |
@@ -104,9 +107,10 @@ Authentication methods:
 
 | Method | Status | Default |
 |---|---|---|
-| Web session with CAS fallback | default, planned (M2) | yes |
-| vNext OAuth | experimental, opt-in, planned (M2) | no |
-| Browser SSO with PKCE | target for v1.0 | no |
+| Browser OAuth2 + PKCE S256 (UGM ID) | primary when `SIMASTER_CLIENT_ID` is configured; planned (M2) | yes, when configured |
+| Web session + CAS fallback | fallback and default when no client ID; planned (M2) | yes, otherwise |
+| vNext gateway | data adapter only; official token acceptance `unverified`; planned (M3) | not an auth method |
+| Mobile client secret | rejected; never used | no |
 
 ## Current help
 
@@ -129,25 +133,69 @@ Options:
   -V, --version  Print version
 ```
 
+`simaster auth login --help` currently exposes the revised method contract:
+
+```text
+Sign in to SIMASTER
+
+Usage: simaster auth login [OPTIONS]
+
+Options:
+      --json
+          Emit machine-readable JSON
+
+      --method <METHOD>
+          Authentication method.
+
+          `auto` uses browser PKCE when `SIMASTER_CLIENT_ID` is configured; otherwise it falls back
+          to the web session and CAS. `browser` requires `SIMASTER_CLIENT_ID`.
+
+          [default: auto]
+          [possible values: auto, browser, web, sso]
+
+      --username <USERNAME>
+          UGM username for the web session fallback
+
+      --verbose
+          Enable debug logging to stderr
+
+      --password-stdin
+          Read the web-fallback password from stdin instead of prompting
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+```
+
 ## Authentication
 
-The default authentication strategy is a **web session with a CAS fallback**.
-The CLI signs in to the SIMASTER web session endpoint and falls back to the UGM
-central authentication service when the direct flow is unavailable.
+The primary authentication strategy is the **official UGM ID OAuth 2.0/OIDC
+Authorization Code flow with PKCE S256**, a public/native client, and a loopback
+redirect. It is used when `SIMASTER_CLIENT_ID` is configured. The browser
+redirect goes through UGM CAS SSO and a consent screen. The CLI sends `state`
+and `nonce`, binds a one-shot listener to `127.0.0.1:53682`, validates the ID
+token with the published JWKS, and never sees or stores the UGM password.
 
-The official mobile app's vNext OAuth flow is documented as an **experimental,
-opt-in** provider. The app's embedded client secret is never copied, bundled,
-shipped, or documented as a value. The vNext provider requires a user-supplied
-authorized client, supplied through the environment or the operating-system
-keyring.
+The **web session with CAS fallback** remains the fallback and the default when
+no UGM ID client is configured. It is the only path available before DTI
+registers a client.
 
-A browser SSO flow with PKCE and a loopback redirect is the target for v1.0.
-It is currently blocked on a client registration that the project does not
-control. See [`docs/AUTH.md`](docs/AUTH.md) and
-[`docs/adr/0002-auth-strategy.md`](docs/adr/0002-auth-strategy.md).
+The **vNext gateway is a data adapter only**. It is not an authentication
+provider. It may accept the official UGM ID access token; that is `unverified`.
+If it does not, the CLI uses the web data adapter.
 
-Credentials are never accepted as command-line arguments. Passwords are read
-from a prompt or stdin. Tokens and cookies are never logged.
+The official mobile app's embedded client secret is never copied, bundled,
+shipped, logged, or documented as a value. The app's custom-scheme redirect is
+not used by this CLI. No client secret is shipped for a public client.
+
+See [`docs/UGM-ID-API.md`](docs/UGM-ID-API.md), [`docs/AUTH.md`](docs/AUTH.md),
+and [`docs/adr/0002-auth-strategy.md`](docs/adr/0002-auth-strategy.md).
+
+Credentials are never accepted as command-line arguments. Passwords for the web
+fallback are read from a prompt or stdin. Tokens, cookies, authorization codes,
+and PKCE verifiers are never logged.
 
 ## Agentic usage
 
@@ -158,6 +206,8 @@ from a prompt or stdin. Tokens and cookies are never logged.
   2 usage, 3 auth, 4 network or rate limit, 5 upstream changed, 6 forbidden.
 - The CLI is read-only by default. Future write commands require an explicit
   opt-in flag, a dry run, and confirmation.
+- Browser login is interactive by nature. `--json` does not remove the browser
+  step; `--no-browser` will print the authorization URL for a user to open.
 - A read-only `api` escape hatch and a separate MCP server are planned for M4.
   They will reuse the same library and contract rather than bypassing it.
 - Set `NO_COLOR=1` for stable terminal output. `RUST_LOG` controls stderr
@@ -167,14 +217,15 @@ from a prompt or stdin. Tokens and cookies are never logged.
 
 | Document | Purpose |
 |---|---|
+| [`docs/UGM-ID-API.md`](docs/UGM-ID-API.md) | Official UGM ID OAuth2/OIDC reference, endpoints, PKCE, registration, DTI email. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, module map, data flow, testing, MCP boundary. |
 | [`docs/AUTH.md`](docs/AUTH.md) | Authentication options, flows, endpoints, threat model. |
-| [`docs/API-MAP.md`](docs/API-MAP.md) | Endpoint registry, gateway envelope, service labels, stability. |
+| [`docs/API-MAP.md`](docs/API-MAP.md) | Level map, endpoint registry, gateway envelope, service labels, stability. |
 | [`docs/CLI-CONTRACT.md`](docs/CLI-CONTRACT.md) | Command grammar, flags, JSON envelope, exit codes, env vars. |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Milestones M0–M6, exit criteria, non-goals. |
-| [`docs/REPO-SETUP.md`](docs/REPO-SETUP.md) | Repository settings runbook for the owner. |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Milestones M0–M6, U0 registration track, exit criteria, non-goals. |
+| [`docs/REPO-SETUP.md`](docs/REPO-SETUP.md) | Repository settings runbook and UGM ID registration checklist. |
 | [`docs/adr/0001-single-crate.md`](docs/adr/0001-single-crate.md) | Why the project starts as one crate. |
-| [`docs/adr/0002-auth-strategy.md`](docs/adr/0002-auth-strategy.md) | Why web session is the default and OAuth is opt-in. |
+| [`docs/adr/0002-auth-strategy.md`](docs/adr/0002-auth-strategy.md) | Why UGM ID PKCE is primary and web remains the fallback. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Setup, tests, branches, commits, review, release. |
 | [`GOVERNANCE.md`](GOVERNANCE.md) | Roles, consensus, RFCs, maintainer lifecycle. |
 | [`SECURITY.md`](SECURITY.md) | Reporting, scope, credential rules, disclosure. |
@@ -193,8 +244,8 @@ second reviewer.
 
 Do not open a public issue for a vulnerability. Use GitHub Security Advisories
 as described in [`SECURITY.md`](SECURITY.md). Never include credentials,
-cookies, tokens, or real student data in an issue, pull request, fixture, or
-log.
+cookies, tokens, authorization codes, or real student data in an issue, pull
+request, fixture, or log.
 
 ## License
 
@@ -218,9 +269,22 @@ protecting your own data.
 
 ## Acknowledgements
 
-The endpoint inventory and authentication analysis were informed by static
-analysis of the official mobile app and by public prior art, especially
-[`gafnaa/vnext-reveng`](https://github.com/gafnaa/vnext-reveng). Community KKN
-automation work informed the web-session and CAS fallback design. All endpoint
-claims in this repository are marked `unverified` unless a live test is cited;
-static analysis is evidence of client code, not of server behavior.
+The official UGM ID OAuth 2.0/OIDC documentation is the primary source for the
+authentication design:
+
+- [UGM ID Swagger UI](https://oauth.simaster.ugm.ac.id/docs)
+- [UGM ID OpenAPI 3.1 specification](https://oauth.simaster.ugm.ac.id/openapi.json)
+- [UGM ID OIDC discovery](https://oauth.simaster.ugm.ac.id/.well-known/openid-configuration)
+- [UGM ID public health check](https://oauth.simaster.ugm.ac.id/health)
+- [UGM ID development server](https://oauth.dev.ugm.ac.id)
+
+Prior-art static analysis of the official mobile app, especially
+[`gafnaa/vnext-reveng`](https://github.com/gafnaa/vnext-reveng), is secondary
+evidence for the vNext **data adapter**, not for authentication. Community KKN
+automation work informed the web-session and CAS fallback design.
+
+Official UGM ID behavior is marked `documented by UGM` and `live-tested: no`
+(except the public health check). Prior-art endpoint claims are marked
+`unverified`. Static analysis is evidence of client code, not of server
+behavior. The mobile app's client ID, embedded secret, tokens, cookies, and the
+custom-scheme redirect as a usable credential are not included.

@@ -18,9 +18,10 @@ body:
     attributes:
       label: Surface
       options:
+        - UGM ID OAuth2/OIDC
+        - UGM ID resource API
         - Web session
         - vNext gateway
-        - vNext OAuth
         - Legacy presensi
         - Other
     validations:

@@ -52,7 +52,9 @@ the reporter's preference.
 
 - Credential, cookie, token, or secret leakage in output, logs, errors, crash
   reports, fixtures, or documentation.
-- Authentication bypass, session fixation, or unsafe token refresh.
+- Authentication bypass, session fixation, PKCE downgrade, missing or
+  mismatched `state`/`nonce`, loopback listener exposure, ID-token validation
+  bypass, or unsafe token refresh.
 - Insecure credential storage, including world-readable files or plaintext
   fallback without an explicit warning.
 - Insecure defaults, such as write operations enabled without opt-in.
@@ -92,16 +94,41 @@ This safe harbor is limited to this project's code and does not grant
 permission to test UGM infrastructure. UGM's own policies and the law still
 apply.
 
+## UGM ID authentication rules
+
+- **Browser PKCE only for UGM ID.** Use Authorization Code + PKCE `S256`; never
+  `plain` and never the password grant.
+- **One-time `state` and `nonce`.** Generate both with a cryptographically
+  secure random source, compare `state` exactly on the callback, and compare
+  `nonce` against the ID token.
+- **Loopback isolation.** Bind the callback listener to `127.0.0.1` only, accept
+  one request, close immediately, and enforce a finite timeout. Do not use a
+  custom scheme or a wildcard host.
+- **ID-token validation.** Verify the RS256 signature with the published JWKS,
+  the `kid`, `iss`, `aud`, `exp`, and `nonce`. Compare `iss` to the literal
+  discovery issuer; do not silently rewrite it. The published issuer omits
+  `https://`, so a mismatch fails closed as `UPSTREAM_CHANGED`.
+- **No public-client secret.** A public/native client uses
+  `token_endpoint_auth_method=none` and has no secret. `SIMASTER_CLIENT_SECRET`
+  is confidential-client-only and experimental; it is never shipped.
+- **Public-client logout limitation.** `/oauth/introspect` and `/oauth/revoke`
+  require HTTP Basic client authentication. A public client cannot call them.
+  Delete local state and open `/oauth/logout` with `id_token_hint` when
+  available; report partial failures.
+- **No dynamic registration.** DTI registers the client and redirect URI
+  manually. The CLI cannot bootstrap a client on its own.
+
 ## Credential handling rules
 
 These rules apply to code, tests, documentation, and support requests:
 
 - **No passwords in argv.** Passwords are read from an interactive prompt or
   stdin, never from a command-line argument, environment variable by default,
-  or shell history.
+  or shell history. Browser PKCE never handles the UGM password.
 - **No secrets in logs.** Passwords, session cookies, access tokens, refresh
-  tokens, authorization codes, client secrets, and full request bodies are
-  never logged at any level. Errors are redacted before display.
+  tokens, ID tokens, authorization codes, PKCE verifiers, client secrets, and
+  full request or callback bodies are never logged at any level. Errors are
+  redacted before display.
 - **Keyring first.** Persistent credentials use the operating-system keyring
   when available. The file fallback is created with mode `0600` on Unix and the
   equivalent restricted ACL on Windows, and is never written to a project
@@ -114,24 +141,35 @@ These rules apply to code, tests, documentation, and support requests:
 - **Redaction at the boundary.** Output writers redact known-sensitive fields
   before printing. Debug logging is opt-in and still redacted.
 - **No tokens in URLs.** Tokens and codes are not placed in query strings that
-  are logged by proxies, shells, or browser history. OAuth uses `state` and
-  PKCE; the CLI never prints the authorization code.
+  are logged by proxies, shells, or browser history. OAuth uses `state`,
+  `nonce`, and PKCE; the CLI never prints the authorization code, callback URL,
+  or token. If a browser fallback prints the authorization URL, it contains no
+  token and is still treated as sensitive.
 
 ## Upstream-risk policy
 
-SIMASTER and its gateway are **undocumented upstream interfaces**. The project
-treats them as unstable:
+UGM ID is an official, documented service, but it is still an upstream
+dependency that can change. The vNext gateway and the web session remain
+undocumented and unstable. The project treats all of them conservatively:
 
-- Endpoint behavior is `unverified` until a live, authorized test is recorded.
+- Official UGM ID behavior is `documented by UGM` and `live-tested: no` until an
+  authorized test is recorded. vNext and web behavior is `unverified` until a
+  live, authorized test is recorded.
+- The discovery issuer and endpoint URLs omit the scheme; validate the literal
+  issuer and normalize transport only. This is a server metadata inconsistency,
+  not a reason to weaken validation.
 - New endpoints ship behind an experimental status and an explicit opt-in.
-- Contract tests run against sanitized fixtures, not production.
+- Contract tests mock discovery, token, JWKS, and user endpoints; they never
+  contact production.
 - A scheduled canary may detect drift; it uses a maintainer's own account and
   fails with `UPSTREAM_CHANGED` rather than guessing.
 - Write operations are disabled by default, require `--allow-write` when they
   exist, support `--dry-run`, and require confirmation unless `--yes` is given.
 - The project does not bypass CAPTCHA, MFA, rate limits, or authorization.
-- If UGM registers a supported client or publishes an API, the project prefers
-  that surface over reverse-engineered behavior.
+- If UGM registers a supported client or publishes a supported API, the project
+  prefers that surface over reverse-engineered behavior.
+- A public client cannot introspect or revoke tokens; local logout and browser
+  logout are documented as the available path.
 
 ## Dependency security
 

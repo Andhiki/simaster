@@ -1,106 +1,122 @@
-# ADR 0002: Web session default, OAuth opt-in
+# ADR 0002: UGM ID PKCE primary, web session fallback
 
-- **Status:** Accepted
+- **Status:** Accepted (revised 2026-11-10 after official UGM ID API discovery)
 - **Date:** 2026-11-10
 - **Deciders:** project maintainers
 
 ## Context
 
-> **Evidence:** all upstream behavior in this ADR is `unverified`. The evidence
-> is prior-art code and static analysis, not a live test. See
-> [`../AUTH.md`](../AUTH.md) and [`../API-MAP.md`](../API-MAP.md) for the
-> endpoint-level provenance and stability markers.
+UGM publishes an official UGM ID OAuth 2.0/OIDC service at
+`oauth.simaster.ugm.ac.id`. Its OpenAPI 3.1 specification, OIDC discovery
+document, Swagger UI, and portal Developer section document:
 
-SIMASTER has three relevant authentication surfaces, as documented in prior
-art and static analysis:
+- Authorization Code with PKCE (`S256`) for browser/native clients.
+- A token endpoint that supports `authorization_code`, `refresh_token`,
+  `password`, `client_credentials`, Google ID-token exchange, and RFC 8693
+  token exchange.
+- Client authentication methods `client_secret_basic`, `client_secret_post`, and
+  `none`; `none` is described as legacy and slated for removal.
+- Resource endpoints `/api/me`, `/user/me`, `/userinfo`, and
+  `/user/username/{username}`.
+- Scopes `openid`, `profile`, `email`, `user.read`, and `userDetail.read`.
+- Manual client registration through DTI UGM, with no dynamic registration
+  endpoint.
+- A public health check and a documented development server.
 
-1. A web session login endpoint on `simaster.ugm.ac.id`, with a CAS fallback
-   through `sso.ugm.ac.id` (`unverified`).
-2. A vNext OAuth service used by the official mobile app (`unverified`).
-3. No documented, public OAuth client for third-party CLI use is known to the
-   project (`unverified`; absence of evidence is not proof).
+The authorize description says PKCE `code_challenge` is required, while the
+machine schema marks it optional and lists `plain`; discovery lists only `S256`.
+The discovery `issuer` and endpoint URLs are published without a scheme. These
+inconsistencies are documented in [`UGM-ID-API.md`](../UGM-ID-API.md) and handled
+by failing closed on the literal issuer in security checks.
 
-Static analysis of the official app indicates that its OAuth flow embeds a
-client secret in the binary, uses a custom-scheme redirect, and does not use
-PKCE or `state` (`unverified`). Copying that client would distribute a
-credential we do not own, bind the CLI to the app's identity, and reproduce
-weaknesses that the OAuth specification warns against. Shipping the secret is
-not an option.
+The web session + CAS flow remains useful because browser PKCE cannot complete
+until DTI registers a client and redirect URI. The vNext gateway remains a data
+adapter; its token acceptance for an official UGM ID access token is
+`unverified`.
 
-A browser SSO flow with PKCE and a loopback redirect is the correct long-term
-native-app model, but it requires a client registration and a redirect policy
-that the project does not control. It is blocked on UGM; no live test exists.
-
-Prior-art evidence indicates that a web session flow can work for a student
-with their own account (`unverified`), but it is brittle: CAPTCHA, MFA, cookie
-expiry, HTML parsing, and WAF behavior can change. It is still the most
-realistic default for M2.
+The official mobile app's OAuth flow embeds a client secret and uses a custom
+scheme. Static analysis is secondary evidence, and the app's client ID, secret,
+and custom-scheme redirect are not used by this project.
 
 ## Options
 
 | Option | Security | Evidence and availability | Maintenance | Decision |
 |---|---|---|---|---|
-| Web session only | Medium: password in the CLI, cookie storage. | Prior-art `unverified` evidence; a live test with an authorized account is still required. | High: scraping and HTML changes. | Default, with CAS fallback. |
-| CAS fallback only | Medium: same credentials, SSO form. | Prior-art `unverified` evidence; a live test is still required. | High: HTML and redirect changes. | Fallback, not the only path. |
-| Official app OAuth with embedded secret | Low: secret is extractable; no PKCE/state; custom scheme. | Static `unverified` evidence; usable only by impersonating the app. | Low code, high legal and ethical risk. | Rejected. |
-| vNext OAuth with user-supplied client | Medium-high: depends on the client; state + PKCE added. | Specified; `unverified` until a live test with an authorized client. | Medium. | Experimental, opt-in. |
-| Browser SSO + PKCE | High: no password in the CLI, MFA-friendly, state + PKCE. | Blocked on client registration; `unverified`. | Low once registered. | Target for v1.0. |
-| Cookie import | Medium: bearer credential, expiry, storage risk. | Candidate; `unverified` and not scheduled. | Medium. | Candidate, not scheduled. |
+| UGM ID browser PKCE | High: public client, S256, state, nonce, loopback, ID-token validation. | Documented by UGM; client registration pending; live-tested no. | Medium: OIDC discovery, JWKS, token lifecycle. | Primary, M2. |
+| Web session + CAS fallback | Medium: password handling, cookie storage, HTML parsing. | Prior-art `unverified` evidence; available without a UGM ID client. | High: CAPTCHA, MFA, HTML, WAF changes. | Fallback, M2. |
+| vNext gateway as an auth provider | Low: requires the mobile app's embedded secret or a custom client. | Rejected. | High legal and ethical risk. | Not an auth path. |
+| vNext gateway as a data adapter | Medium: Bearer token; official-token acceptance `unverified`. | Prior-art static evidence; secondary. | Medium: envelope and service-label drift. | Data adapter, M3. |
+| Cookie import | Medium: bearer cookie, expiry, storage risk. | Candidate; `unverified` and not scheduled. | Medium. | Not scheduled. |
+| Official mobile client secret | Low: extractable, no PKCE/state in the app flow, impersonation. | Static `unverified` evidence; not ours to distribute. | Low code, high legal and ethical risk. | Rejected. |
 
 ## Decision
 
-- **Default:** web session login with a CAS fallback, based on `unverified`
-  prior-art evidence and subject to live verification in M2.
-- **Experimental:** vNext OAuth through `--method vnext`, using a user-supplied
-  client from the environment or keyring. No embedded client ID or secret.
-- **Target:** browser SSO with PKCE, `state`, and a loopback redirect for v1.0.
-- **Rejected:** copying the official app's client credentials, custom-scheme
-  interception, embedded secrets, and any flow without `state`/PKCE.
-- **Non-goals:** CAPTCHA-solving services, MFA bypass, rate-limit evasion, and
-  multi-user token reuse.
-
-Credential storage is keyring-first with a `0600` file fallback. Passwords are
-read from a prompt or stdin, never argv. Tokens and cookies are never logged.
+- **Primary:** browser Authorization Code + PKCE S256 with a public/native UGM ID
+  client, loopback redirect `http://127.0.0.1:53682/callback`, `state`, `nonce`,
+  and ID-token validation. Use it when `SIMASTER_CLIENT_ID` is configured.
+- **Fallback:** SIMASTER web session with CAS until DTI registers a client or
+  when the browser flow is unavailable.
+- **vNext:** data adapter only. It may accept the official UGM ID access token;
+  that is `unverified`. If not, use the web data adapter. Never add a
+  mobile-client auth provider or secret.
+- **Profile PoC:** `auth login` (browser PKCE) → `whoami` via `/api/me` →
+  `profile show` via `/user/me`. Both move to M2.
+- **No mobile secret:** the app's client ID, embedded secret, custom-scheme
+  redirect as a usable credential, tokens, and cookies are not copied or
+  bundled.
+- **No write scopes by default:** the CLI requests only the read-only scopes it
+  needs.
+- **Confidential-only fallback:** if DTI cannot register a public client, do not
+  ship a secret. Keep the web fallback, allow a user-registered confidential
+  client from the environment/keyring, or revisit a backend-for-frontend in a
+  future RFC. No BFF exists in v0.
+- **Credential storage:** keyring-first, `0600` file fallback, no password
+  storage for browser PKCE, redaction everywhere.
 
 ## Consequences
 
 Positive:
 
-- The project can make progress without a UGM partnership.
+- The project uses the official, documented identity API instead of
+  reverse-engineering the mobile app's auth.
 - No third-party client credential is distributed.
-- The experimental provider gives users with an authorized client a path
-  forward without making OAuth the default.
-- The v1.0 target is the correct native-app design.
+- Browser PKCE is the correct native-app pattern and avoids password storage.
+- The web fallback keeps the CLI useful while registration is pending.
+- The vNext data adapter can still reach data that UGM ID does not expose, but
+  it is no longer an auth path.
 
 Negative:
 
-- The default flow handles passwords and cookies, which is a real security
-  burden.
-- The web flow can break without notice.
-- vNext OAuth is not usable by most users until a client exists.
-- Browser SSO is blocked, so the best option is not available yet.
+- Browser PKCE is blocked until DTI registers a client and redirect URI.
+- `none` is legacy-only per the spec; a new public client may be refused.
+- The discovery issuer/scheme inconsistency requires strict, fail-closed
+  handling.
+- A public client cannot introspect or revoke; logout is partly local.
+- The web fallback still handles passwords and brittle HTML.
+- The vNext token-acceptance question is unresolved.
 
 Mitigations:
 
-- Typed `AUTH_FAILED`, `AUTH_EXPIRED`, `RATE_LIMITED`, and `UPSTREAM_CHANGED`
-  errors with actionable messages.
-- Interactive CAPTCHA only; no automated solving.
-- Keyring-first storage and a warning when the fallback is active.
-- Sanitized fixtures and a scheduled read-only canary.
-- A documented browser fallback when the CLI cannot complete authentication.
+- A ready-to-send DTI request and a U0 upstream track.
+- The web session + CAS fallback remains available.
+- Mocked discovery/token/JWKS/user tests and a live authorized test in M2.
+- A typed `UPSTREAM_CHANGED` path for metadata drift.
+- A documented public-client logout limitation.
 
 ## Revisit triggers
 
 Review this ADR when:
 
-- UGM registers a CLI or native-app OAuth client, or publishes a supported API;
-- UGM makes MFA mandatory for all students;
-- the web session or CAS flow breaks and cannot be repaired without a browser;
-- the OAuth server requires PKCE, changes the redirect policy, or issues
-  different token lifetimes;
-- a security review finds the credential handling below the standard in
-  `SECURITY.md`;
-- a user-supplied client becomes impractical for the target audience.
+- DTI approves a public/native client with `none` and PKCE;
+- DTI requires a confidential client, or a confidential-only decision changes
+  the viable path;
+- MFA becomes mandatory in a way that affects the web fallback;
+- the vNext gateway accepts or rejects the official UGM ID access token;
+- UGM fixes the discovery issuer/scheme inconsistency or changes the PKCE
+  metadata, token lifetimes, refresh rotation, or rate limits;
+- the web session or CAS fallback breaks;
+- a security review finds a gap in PKCE, state, nonce, loopback, ID-token
+  validation, or storage handling.
 
-A change to the default method, storage model, or scope policy is an RFC under
-`GOVERNANCE.md`.
+A change to the default method, storage model, scope policy, or client type is
+an RFC under [`GOVERNANCE.md`](../../GOVERNANCE.md).

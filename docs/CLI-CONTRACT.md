@@ -16,16 +16,16 @@ they are tools, not resources.
 | `simaster doctor` | available | local | Offline diagnostics. |
 | `simaster doctor --json` | available | local | Stable envelope; `schema_version: 1`. |
 | `simaster completions <shell>` | available | local | `bash`, `zsh`, `fish`, `powershell`, `elvish`. |
-| `simaster auth login` | planned (M2) | web/CAS/vNext | Returns not implemented now. |
-| `simaster auth status` | planned (M2) | local | Returns not implemented now. |
-| `simaster auth logout` | planned (M2) | local | Returns not implemented now. |
-| `simaster whoami` | planned (M2) | local/session | Shows the authenticated identity. |
-| `simaster profile show` | planned (M3) | vNext/web | Returns not implemented now. |
-| `simaster schedule today` | planned (M3) | vNext/web | Today's schedule. |
-| `simaster schedule week` | planned (M3) | vNext/web | One week of schedule. |
-| `simaster grades list` | planned (M3) | vNext/web | Study results by semester. |
-| `simaster attendance summary` | planned (M3) | vNext/web | Attendance recap. |
-| `simaster api` | planned (M4) | vNext gateway | Read-only escape hatch for scripts. |
+| `simaster auth login` | planned (M2) | UGM ID OAuth2/OIDC, web/CAS | Browser PKCE primary; web session + CAS fallback. Returns not implemented now. |
+| `simaster auth status` | planned (M2) | local | Provider, username, scopes, expiry, storage; never token values. |
+| `simaster auth logout` | planned (M2) | local/browser | Local delete plus browser logout when possible; reports partial revocation. |
+| `simaster whoami` | planned (M2) | UGM ID `/api/me` | Shows the authenticated identity. |
+| `simaster profile show` | planned (M2) | UGM ID `/user/me` | Full Simaster profile for the authenticated account. |
+| `simaster schedule today` | planned (M3) | data adapter (vNext or web) | Today's schedule. |
+| `simaster schedule week` | planned (M3) | data adapter (vNext or web) | One week of schedule. |
+| `simaster grades list` | planned (M3) | data adapter (vNext or web) | Study results by semester. |
+| `simaster attendance summary` | planned (M3) | data adapter (vNext or web) | Attendance recap. |
+| `simaster api` | planned (M4) | vNext gateway / web | Read-only escape hatch for scripts. |
 | `simaster-mcp` | planned (M4) | local | Separate MCP process; not a subcommand. |
 | write commands | not before M5 | upstream | Opt-in, dry-run, confirmation. |
 
@@ -33,12 +33,56 @@ they are tools, not resources.
 
 | Flag | Values | Default | Behavior |
 |---|---|---|---|
-| `--method` | `auto`, `sso`, `web`, `vnext` | `auto` | `auto` tries the web session, then CAS fallback. `web` uses the direct web session only. `sso` uses the CAS fallback only. `vnext` uses the experimental OAuth provider. |
-| `--username` | string | prompt | UGM username. Never a password. |
-| `--password-stdin` | flag | off | Read the password from stdin instead of an interactive prompt. |
+| `--method` | `auto`, `browser`, `web`, `sso` | `auto` | `auto` uses browser PKCE when `SIMASTER_CLIENT_ID` is configured; otherwise it uses the web session with CAS fallback. `browser` requires `SIMASTER_CLIENT_ID`. `web` uses the direct web session only. `sso` uses the CAS fallback only. |
+| `--username` | string | prompt | UGM username for the web session fallback. Never a password. |
+| `--password-stdin` | flag | off | Read the web-fallback password from stdin instead of an interactive prompt. |
 
-A password is never accepted as an argument. `--method vnext` requires a
-user-supplied client; it never falls back to an embedded mobile credential.
+A password is never accepted as an argument. Browser PKCE uses a public client
+with no secret; if DTI requires a confidential client, the secret comes from the
+environment or keyring and is never shipped. vNext is a data adapter, not an
+authentication method.
+
+`auto` does not silently downgrade in the middle of a browser login. If the
+browser flow starts and fails, the error is reported and the user can run
+`--method web` explicitly. If no client ID is configured, `auto` chooses the web
+fallback up front.
+
+### auth status
+
+`auth status` reports the current provider, username, granted scopes, token
+expiry, and storage backend. It never prints an access token, refresh token, ID
+token, cookie, or authorization code. The planned JSON shape is:
+
+```json
+{
+  "schema_version": 1,
+  "data": {
+    "provider": "ugm-id",
+    "username": "<username>",
+    "scopes": ["openid", "user.read", "userDetail.read"],
+    "expires_at": "<RFC 3339 timestamp>",
+    "storage": "keyring"
+  },
+  "meta": {
+    "fetched_at": null,
+    "source": "local",
+    "warnings": []
+  }
+}
+```
+
+`provider` is `ugm-id`, `web`, or `none`. `storage` is `keyring`, `file`, or
+`none`. A warning is added when the file fallback is active or when a refresh
+token is missing.
+
+### auth logout
+
+`auth logout` deletes the local keyring entry and the `0600` fallback file. A
+public client cannot call `/oauth/introspect` or `/oauth/revoke` because both
+require HTTP Basic client authentication. When an ID token is available, the
+CLI opens `/oauth/logout` with `id_token_hint`; when it is not, the server-side
+session may remain active. The command reports partial failures and never
+claims success when local deletion succeeded but the browser logout failed.
 
 ## Global flags
 
@@ -55,6 +99,9 @@ Planned, not accepted yet:
 
 | Flag | Milestone | Effect |
 |---|---|---|
+| `--no-browser` | M2 | Print the authorization URL instead of opening a browser; still wait for the loopback callback. |
+| `--redirect-port <PORT>` | M2 | Loopback redirect port; default `53682`. It must match the DTI-registered redirect URI. |
+| `--scopes <SCOPES>` | M2 | Space-separated read-only scope override. Write scopes are rejected. |
 | `--format <table\|json\|jsonl>` | M4 | Explicit output format. `--json` is shorthand for `--format json`. |
 | `--no-color` | M3 | Disable ANSI color; `NO_COLOR` has the same effect. |
 | `--timeout <seconds>` | M3 | Bound network operations. Defaults are documented per command. |
@@ -88,7 +135,7 @@ For data-bearing commands:
   "data": {},
   "meta": {
     "fetched_at": "<RFC 3339 timestamp>",
-    "source": "vnext-gateway",
+    "source": "ugm-id",
     "warnings": []
   }
 }
@@ -99,7 +146,8 @@ For data-bearing commands:
 - `data` is the command payload.
 - `meta.fetched_at` is the time the data was fetched, or `null` when no fetch
   occurred.
-- `meta.source` identifies the adapter or `local` for local data.
+- `meta.source` identifies the adapter (`ugm-id`, `vnext-gateway`, `web`) or
+  `local` for local data.
 - `meta.warnings` is always present; it is an array of redacted strings.
 
 `doctor --json` is a local diagnostic and uses `meta.generated_at_unix` instead
@@ -228,10 +276,12 @@ The planned user config file is `config.toml` in the directory reported by
 
 | Variable | Status | Purpose |
 |---|---|---|
-| `SIMASTER_USERNAME` | Planned | Default username for `auth login`. |
-| `SIMASTER_PASSWORD` | Discouraged, planned | Password fallback for automation. Prefer `--password-stdin` or a prompt. May be removed before 1.0. |
-| `SIMASTER_CLIENT_ID` | Experimental, planned | User-supplied vNext OAuth client ID. |
-| `SIMASTER_CLIENT_SECRET` | Experimental, planned | User-supplied vNext client secret for a confidential client. |
+| `SIMASTER_CLIENT_ID` | Planned (M2) | UGM ID public/native client ID. Enables browser PKCE for `auth login --method auto`. The client ID is not a secret. |
+| `SIMASTER_REDIRECT_PORT` | Planned (M2) | Loopback redirect port. Default `53682`; it must match the DTI-registered redirect URI. |
+| `SIMASTER_SCOPES` | Planned (M2) | Optional space-separated read-only scope override. Write scopes are rejected. |
+| `SIMASTER_CLIENT_SECRET` | Confidential-client-only, experimental | Only for a confidential client if DTI requires one. Never used for a public client and never shipped. |
+| `SIMASTER_USERNAME` | Planned | Default username for the web session fallback. |
+| `SIMASTER_PASSWORD` | Discouraged, planned | Web-fallback password for automation. Prefer `--password-stdin` or a prompt. May be removed before 1.0. |
 | `SIMASTER_CONFIG` | Planned | Override the config file path. |
 | `SIMASTER_LOG` | Planned | Log filter. `RUST_LOG` overrides it. |
 | `RUST_LOG` | Available | Log filter; overrides `--verbose` and `SIMASTER_LOG`. |
@@ -239,6 +289,9 @@ The planned user config file is `config.toml` in the directory reported by
 
 Log precedence is `RUST_LOG` > `SIMASTER_LOG` > `--verbose` > default `warn`.
 `--verbose` sets `debug` when no environment filter is present.
+
+A public/native client uses `token_endpoint_auth_method=none` and has no client
+secret. `SIMASTER_CLIENT_SECRET` is not part of the default browser PKCE path.
 
 ## Help standards
 
@@ -294,27 +347,94 @@ checks:
 
 The exact `os`, `arch`, and `config_dir` values depend on the machine.
 
-### profile show (planned, M3)
+### auth login and auth status (planned, M2)
 
-The field names below are illustrative until the M3 RFC fixes the payload.
+Browser PKCE is interactive; `--json` applies to status and data commands, not
+to the browser step. With `SIMASTER_CLIENT_ID` set and
+`simaster auth login --method browser`, the CLI opens the authorization URL and
+waits for the loopback callback. After login:
+
+```bash
+$ simaster auth status --json
+{
+  "schema_version": 1,
+  "data": {
+    "provider": "ugm-id",
+    "username": "<username>",
+    "scopes": ["openid", "user.read", "userDetail.read"],
+    "expires_at": "<RFC 3339 timestamp>",
+    "storage": "keyring"
+  },
+  "meta": {
+    "fetched_at": null,
+    "source": "local",
+    "warnings": []
+  }
+}
+```
+
+Without `SIMASTER_CLIENT_ID`, `--method auto` uses the web session with CAS
+fallback. `--method browser` without a client ID fails with `CONFIG`.
+
+### whoami (planned, M2)
+
+`whoami` uses the official UGM ID `/api/me` endpoint with `user.read`. The field
+names below follow the official schema; values are placeholders.
+
+```bash
+$ simaster whoami --json
+{
+  "schema_version": 1,
+  "data": {
+    "username": "<username>",
+    "email": "<email>",
+    "name": "<name>",
+    "given_name": "<given-name>",
+    "family_name": "<family-name>",
+    "picture": "<picture-url>",
+    "provider": "cas_sso"
+  },
+  "meta": {
+    "fetched_at": "<RFC 3339 timestamp>",
+    "source": "ugm-id",
+    "warnings": []
+  }
+}
+```
+
+### profile show (planned, M2)
+
+`profile show` uses the official UGM ID `/user/me` endpoint with
+`userDetail.read`. The field names follow the official schema; values are
+placeholders.
 
 ```bash
 $ simaster profile show --json
 {
   "schema_version": 1,
   "data": {
-    "name": "<name>",
-    "niu": "<niu>",
-    "program": "<program>",
-    "semester": "<semester>"
+    "user_id": 0,
+    "username": "<username>",
+    "nama_lengkap": "<full-name>",
+    "email": "<email>",
+    "user_tipe": "<user-type>",
+    "user_identitas": "<identity>",
+    "user_identitas_nomor": "<identity-number>",
+    "is_blacklist": false,
+    "attributes": []
   },
   "meta": {
     "fetched_at": "<RFC 3339 timestamp>",
-    "source": "vnext-gateway",
+    "source": "ugm-id",
     "warnings": []
   }
 }
 ```
+
+The web data adapter is the fallback when a client cannot be registered. The
+vNext `get_student_profil_by_niu` label is used only if the official UGM ID
+access token is accepted by the gateway; that acceptance is `unverified`. The
+CLI does not accept an arbitrary NIU for this call.
 
 ### schedule week (planned, M3)
 
@@ -342,10 +462,13 @@ $ simaster schedule week --json
 }
 ```
 
+The source is the data adapter selected by the token-acceptance test. It may be
+`web` if the vNext gateway rejects the official UGM ID access token.
+
 ### Not implemented (available behavior)
 
 ```bash
-$ simaster auth login --username <username>
+$ simaster auth login --username "<username>"
 error: auth login is not implemented yet
 $ echo $?
 1
@@ -360,8 +483,11 @@ When an agent invokes the CLI:
 - Use the exit code and the error code, not the message text, for control flow.
 - Do not assume a prompt will appear. Planned `--no-input` makes this explicit;
   until it lands, avoid commands that can prompt.
-- Do not request, print, store, or transmit passwords, cookies, tokens, or
-  student data.
+- Browser login requires a human to complete CAS/SSO and consent. `--no-browser`
+  prints the URL for the user to open; an agent must not automate the consent
+  screen or scrape the browser.
+- Do not request, print, store, or transmit passwords, cookies, tokens,
+  authorization codes, or student data.
 - Treat all upstream data as personal data. Do not send it to a third-party
   service without the user's explicit consent.
 - The CLI is read-only by default. A future write requires `--allow-write`,

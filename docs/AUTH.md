@@ -1,39 +1,109 @@
 # Authentication
 
-This document describes the authentication options, the chosen defaults, the
-evidence behind each endpoint, and the security rules the implementation must
-follow. All upstream behavior is **unverified**: the evidence is prior-art code
-and static analysis, not a live test. Do not treat an endpoint description as a
-server contract.
+This document describes the authentication decision, the browser PKCE flow, the
+web session fallback, the token lifecycle, and the security rules the
+implementation must follow.
+
+**Evidence status:** the official UGM ID behavior below is **documented by UGM**
+(OpenAPI 3.1, OIDC discovery, Swagger UI, and the Developer section of the UGM ID
+portal). It is **not live-tested**, except the public unauthenticated `/health`
+check. The vNext gateway and web session behavior remains prior-art/static
+evidence and is `unverified`. See [`UGM-ID-API.md`](UGM-ID-API.md) for the full
+official API reference and [`API-MAP.md`](API-MAP.md) for the endpoint registry.
 
 ## Decision
 
-1. **Default:** the SIMASTER web session flow with a CAS fallback.
-2. **Experimental:** the official app's vNext OAuth provider, opt-in, using a
-   user-supplied authorized client. The app's embedded client secret and client
-   ID are never copied, bundled, or published as values.
-3. **Target for v1.0:** browser SSO with PKCE, `state`, and a loopback redirect.
-   It is blocked until a client is registered for this use case.
-4. **Non-negotiable:** no password in argv, no secrets in logs, no multi-user
-   token reuse, and no bypass of CAPTCHA, MFA, rate limits, or authorization.
+1. **Primary:** browser OAuth 2.0 Authorization Code + PKCE S256 with a public
+   client and a loopback redirect. Used when `SIMASTER_CLIENT_ID` is configured.
+2. **Fallback:** SIMASTER web session with a CAS fallback while no UGM ID client
+   is registered or when the browser flow is unavailable.
+3. **vNext:** a **data adapter only**. It is never an authentication path. It may
+   accept the official UGM ID access token; that is `unverified`. If the token is
+   not accepted, use the web data adapter.
+4. **Rejected:** the official mobile app's embedded client secret, its custom
+   scheme as a credential, the password grant, and any write scope by default.
+5. **Target:** a DTI-registered public/native client with
+   `token_endpoint_auth_method=none`, PKCE S256, and loopback redirects.
 
-The rationale is recorded in
-[ADR 0002](adr/0002-auth-strategy.md).
+The rationale is recorded in [ADR 0002](adr/0002-auth-strategy.md).
 
 ## Options
 
-| Method | How it works | Pros | Cons | Status |
+| Option | How it works | Pros | Cons | Status |
 |---|---|---|---|---|
-| **Web session** | `POST /services/simaster/service_login` with username and password; store the session cookie. | Simplest flow; matches the portal; works with a student account. | Cookie expiry; CAPTCHA or MFA can interrupt; HTML/JSON shape can change; password handling. | Default, planned M2. |
-| **CAS fallback** | Redirect through `sso.ugm.ac.id/cas/login?service=...`, submit the login form with `lt`, follow the ticket, handle CAPTCHA. | Reuses the same credentials; survives a broken direct login; matches normal SSO. | HTML parsing; CAPTCHA; redirect chain can change; still a password flow. | Automatic fallback, planned M2. |
-| **vNext OAuth** | Authorization-code flow through `oauth.simaster.ugm.ac.id`; use access and refresh tokens against the gateway. | Token lifecycle; refresh; no cookie jar. | Official app uses an embedded secret, a custom scheme, and no PKCE/state; not usable by this CLI as-is. A user must supply an authorized client. | Experimental, opt-in, planned M2. |
-| **Browser SSO + PKCE** | Open the system browser; authorize with `state` + PKCE; receive the code on a loopback redirect; exchange it for tokens. | No password in the CLI; MFA-friendly; best practice for native apps. | Requires a registered client and an allowed loopback redirect; not available today. | Blocked, target v1.0. |
-| **Cookie import** | Read a user-supplied cookie jar for an existing session. | Avoids a password prompt; useful when login is interactive. | A cookie is a bearer credential; expiry and leakage risk; UX and storage burden. | Candidate, not scheduled. |
+| **UGM ID PKCE** | Browser Authorization Code + PKCE S256; loopback redirect; public client; access/refresh/ID tokens. | Official API; no password in the CLI; MFA-friendly; standard native-app flow. | Requires DTI registration; `none` is legacy-only per spec; token endpoint behavior is not live-tested here. | Primary, planned M2. |
+| **Web session + CAS** | `POST /services/simaster/service_login`; CAS fallback through `sso.ugm.ac.id`. | Works without a UGM ID client; uses the existing portal; same student account. | Cookie expiry, CAPTCHA, MFA, HTML parsing, WAF changes. | Fallback, planned M2. |
+| **vNext data adapter** | Bearer token against the vNext gateway; `UGMFWSERVICE: 1`; service labels. | Reaches Simaster data not exposed by UGM ID. | Not an auth path; token acceptance is `unverified`; envelope is prior-art evidence. | Data only, planned M3. |
+| **Cookie import** | User supplies a session cookie jar. | Avoids a password prompt. | A cookie is a bearer credential; expiry and leakage risk. | Candidate, not scheduled. |
+| **Mobile client secret** | Use the official app's embedded client ID/secret and custom scheme. | None that this project can justify. | Extracted secret, no PKCE/state in the app flow, impersonation, legal and ethical risk. | Rejected. |
+
+## Browser PKCE flow
+
+The browser flow is the primary path when `SIMASTER_CLIENT_ID` is set.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as Student
+  participant CLI as simaster
+  participant B as System browser
+  participant ID as UGM ID
+  participant CAS as CAS SSO
+  participant API as UGM ID API
+
+  U->>CLI: simaster auth login
+  CLI->>CLI: generate state, nonce, PKCE verifier\nS256 challenge
+  CLI->>CLI: start one-shot listener\n127.0.0.1:53682/callback
+  CLI->>B: open /oauth/authorize\n(response_type=code, client_id,\nredirect_uri, scope, state, nonce,\ncode_challenge, code_challenge_method=S256)
+  B->>ID: GET /oauth/authorize
+  ID->>CAS: redirect to UGM CAS SSO
+  CAS-->>ID: authenticated session
+  ID-->>B: consent screen
+  U->>B: approve read-only scopes
+  ID-->>CLI: 302 to loopback with code + state
+  CLI->>CLI: verify state; close listener
+  CLI->>ID: POST /oauth/token\n(code, redirect_uri, client_id, code_verifier)
+  ID-->>CLI: access_token, optional refresh_token,\nid_token, expires_in, scope
+  CLI->>CLI: validate ID token via JWKS + nonce\nstore tokens in keyring
+  CLI->>API: Bearer access_token
+```
+
+Key rules:
+
+- **PKCE is required.** Use `S256` only, never `plain`. The authorize
+  description says `code_challenge` is required; the machine schema marks it
+  optional. Treat it as required.
+- **`state` is one-time and compared exactly.** It protects the redirect from
+  cross-session injection. Never reuse it.
+- **`nonce` is bound to the ID token.** Generate it with the same randomness
+  source, send it on the authorization request, and compare the `nonce` claim
+  after the token exchange.
+- **Loopback only.** Bind the listener to `127.0.0.1:53682`, accept one
+  callback, close immediately, and time out after 300 seconds. Never bind
+  `0.0.0.0` or reuse a socket after the callback.
+- **Browser-open fallback.** If the browser cannot be opened, print the
+  authorization URL to stderr and ask the user to open it manually. Keep
+  waiting for the loopback callback until the timeout.
+- **No secret for a public client.** Send `client_id` and `code_verifier`; do
+  not send a client secret. A confidential client, if DTI requires one, gets its
+  secret from the environment or keyring only.
+- **Redaction.** Never print or log the authorization code, verifier, token, or
+  full callback URL.
+
+The token endpoint supports `authorization_code`, `refresh_token`, `password`,
+`client_credentials`, Google ID-token exchange, and RFC 8693 token exchange.
+This CLI uses only `authorization_code` and `refresh_token`. The `password`
+grant is not used; it would reintroduce password handling.
 
 ## Web session and CAS fallback
 
-The default `auth login` flow tries the web session endpoint first. If it does
-not produce a valid session, the CLI falls back to the CAS login page.
+The fallback is the existing web session flow. It is used when:
+
+- `SIMASTER_CLIENT_ID` is absent and `--method auto` selects the web path up
+  front;
+- the user explicitly selects `--method web` or `--method sso`;
+- a browser PKCE failure is reported and the user explicitly re-runs with
+  `--method web`. There is no automatic downgrade in the middle of a login.
 
 ```mermaid
 sequenceDiagram
@@ -46,7 +116,7 @@ sequenceDiagram
   U->>CLI: simaster auth login
   CLI->>CLI: prompt username/password\n(no argv, no echo)
   CLI->>S: POST /services/simaster/service_login
-  alt direct login succeeds
+  alt direct web login succeeds
     S-->>CLI: JSON isLogin=1 + session cookie
   else direct login fails or is unavailable
     CLI->>S: GET /ugmfw/signin_simaster/signin_proses
@@ -63,212 +133,145 @@ sequenceDiagram
     S-->>CLI: session cookie
   end
   CLI->>CLI: store session in keyring\n(or 0600 fallback)
-  CLI-->>U: signed in
+  CLI-->>U: signed in with web session
 ```
 
-All steps are `unverified`; they are reconstructed from prior-art code. The
-CLI does not solve CAPTCHAs automatically and does not bypass MFA. If the
-challenge cannot be completed interactively, auth fails with `AUTH_FAILED` and
-a message that points to the browser as the fallback.
+The web flow is `unverified` prior-art evidence. It is still valuable because it
+does not depend on DTI registration. It is not the primary path once a public
+UGM ID client exists.
 
-The direct flow sends form fields `aId`, `username`, and `password` to the
-service login endpoint. The response is read as JSON with `isLogin` and
-`namaLengkap`. The fallback extracts the CAS `lt` token and `JSESSIONID`, then
-posts `username`, `password`, `lt`, `_eventId=submit`, and `submit=LOGIN`.
+## Method selection and `auto`
 
-## vNext OAuth (experimental)
+| Method | Behavior |
+|---|---|
+| `auto` | If `SIMASTER_CLIENT_ID` is configured, use browser PKCE. Otherwise use the web session with CAS fallback. |
+| `browser` | Browser PKCE. Requires `SIMASTER_CLIENT_ID`; without it, fail with `CONFIG`. |
+| `web` | Direct SIMASTER web session only. |
+| `sso` | CAS fallback only. |
+| `vnext` | Removed. vNext is a data adapter, not an auth method. |
 
-The vNext provider is opt-in with `--method vnext`. It is intended for users
-who have an authorized OAuth client they are allowed to use. The project ships
-no client credential.
+`auto` never silently downgrades from browser to web in the middle of a login.
+If the browser flow starts and fails, the error is reported; the user can run
+`--method web` explicitly. If no client ID is configured, `auto` chooses the web
+fallback up front and says so in `auth status`.
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as Student
-  participant CLI as simaster
-  participant B as System browser
-  participant O as oauth.simaster.ugm.ac.id
-  participant CAS as sso.ugm.ac.id
-  participant API as api.simaster.ugm.ac.id
-
-  U->>CLI: simaster auth login --method vnext
-  CLI->>CLI: load client_id + optional secret\nfrom env or keyring
-  alt no client configured
-    CLI-->>U: CONFIG / missing client\n(no embedded fallback)
-  else client available
-    CLI->>CLI: generate state + PKCE verifier
-    CLI->>B: open /oauth/authorize\n(response_type=code, client_id, redirect_uri,\nscope=read-only, state, code_challenge)
-    B->>O: GET /oauth/authorize
-    O->>CAS: login if needed
-    CAS-->>O: authenticated session
-    O-->>B: redirect to loopback with code + state
-    B-->>CLI: callback
-    CLI->>CLI: verify state, keep verifier
-    CLI->>O: POST /oauth/token\n(code, redirect_uri, client auth, code_verifier)
-    O-->>CLI: access_token, refresh_token, expires_in
-    CLI->>CLI: store tokens in keyring\n(or 0600 fallback)
-    CLI->>API: Bearer token on read-only calls
-  end
-```
-
-The official app's flow differs in ways this project does not copy: it has no
-`state`, no PKCE, uses the app's custom scheme
-`id.ac.ugm.student.vnext.simaster://oauth2`, and embeds a client secret in the
-binary. That custom scheme belongs to the official app and is **not usable by
-this CLI**. The CLI uses a loopback redirect and PKCE when a registered client
-is available.
-
-`state` is compared exactly and discarded after use. The authorization code is
-single-use and never printed. The token request uses the user's client
-credentials from the environment or keyring; the secret is never written to
-disk in plaintext.
-
-## Endpoint evidence
-
-Every row below is `unverified`. Provenance is prior-art code or static
-analysis of the official app, not a live request. See
-[`API-MAP.md`](API-MAP.md) for the full registry and stability policy.
-
-| Endpoint | Method | Purpose | Evidence | Status |
-|---|---|---|---|---|
-| `https://simaster.ugm.ac.id/services/simaster/service_login` | `POST` | Direct web session login. | Prior-art `simaster.py`. Request fields `aId`, `username`, `password`; response JSON `isLogin`, `namaLengkap`. | `unverified` |
-| `https://sso.ugm.ac.id/cas/login?service=...` | `GET` | CAS login page; provides `lt` and `JSESSIONID`. | Prior-art `simaster.py`, `oauth.py`. | `unverified` |
-| `https://simaster.ugm.ac.id/ugmfw/signin_simaster/signin_proses` | `GET` | Starts the CAS redirect chain. | Prior-art `simaster.py`. | `unverified` |
-| `https://simaster.ugm.ac.id/ugmfw/signin_simaster/captchasound_verification` | `POST` | Submits an interactive CAPTCHA answer. | Prior-art `simaster.py`; exact form contract not verified. | `unverified` |
-| `https://oauth.simaster.ugm.ac.id/oauth/authorize` | `GET` | vNext authorization request. | Static analysis; the official app sends no `state`/PKCE. | `unverified` |
-| `https://oauth.simaster.ugm.ac.id/oauth/token` | `POST` | vNext code exchange and refresh. | Static analysis; exact grant and error shapes not verified. | `unverified` |
-| `https://api.simaster.ugm.ac.id/v1/student/micro/services` | `POST` | Student data gateway. | Static analysis of the official app. | `unverified` |
-
-Never send credentials to a host that is not one of the documented HTTPS
-endpoints. Certificate validation is always on; cleartext HTTP is never used.
-
-## Least-privilege scopes
-
-The production app requests twelve scopes, four of which grant write access.
-This project requests only the read-only subset it needs:
-
-```text
-user.read
-userDetail.read
-student
-student.read
-student.niu.read
-vehicle.read
-parent.read
-transgama.read
-```
-
-Never request these write scopes by default:
-
-```text
-user.read-write-update
-mygate.read-write
-parent.read-write-update
-student.read-write-update
-```
-
-A future write feature must request its narrowest scope, require an RFC, and
-ship behind `--allow-write` with a dry run. Scope presence is not proof of
-server authorization; scope enforcement is `unverified`.
-
-## Secret policy
-
-- The official mobile app's `client_id`, `client_secret`, redirect URI as a
-  usable credential, and any extracted token are out of scope. Only the custom
-  scheme is documented, and only to explain why this CLI cannot use it.
-- The vNext provider takes a user-supplied client through
-  `SIMASTER_CLIENT_ID` and, for a confidential client, `SIMASTER_CLIENT_SECRET`
-  from the environment or keyring. An empty value is an error, not a reason to
-  fall back to a bundled secret.
-- The browser SSO target uses PKCE and a loopback redirect; it does not need a
-  client secret.
-- Tokens are bearer credentials. They are never passed in a URL, written to a
-  log, or included in a crash report.
-- Placeholders in documentation use `<client-id>`, `<client-secret>`, and
-  `<token>`. A real value is never committed.
-
-## Session and token storage
+## Token and session storage
 
 | Item | Storage | Lifetime | Removal |
 |---|---|---|---|
-| Web session cookie | OS keyring first; `0600` file fallback. | Until expiry or a 401/redirect-to-login. | `auth logout`; overwrite on next login. |
-| vNext access token | OS keyring first; `0600` fallback. | `expires_in` minus a safety margin. | Refresh, logout, or `AUTH_EXPIRED`. |
-| vNext refresh token | Same entry as the access token. | Until rejected by the token endpoint. | Logout; local deletion even if revocation is unavailable. |
-| Client secret | Environment or keyring; never the config file by default. | User-managed. | User removes it. |
+| UGM ID access token | OS keyring first; `0600` file fallback. | `expires_in` minus a safety margin; documented example is 3600 seconds. | Refresh, logout, or `AUTH_EXPIRED`. |
+| UGM ID refresh token | Same entry as the access token. | Unknown; optional in the token response. | Logout; local deletion even if revocation is unavailable. |
+| UGM ID ID token | Same entry, only when `openid` is requested. | Used for identity and logout hint; validate before use. | Logout. |
+| Web session cookie | OS keyring first; `0600` fallback. | Until expiry or a 401/redirect-to-login. | `auth logout`. |
+| UGM password | Never stored. | — | — |
 
 The file fallback is created with mode `0600` on Unix and a restricted ACL on
-Windows. The file contains only the minimum fields and is never stored in the
+Windows. It contains only the minimum fields and is never stored in the
 repository or a project directory. `doctor` reports which storage is in use and
-warns if the fallback is active.
+warns when the fallback is active. `auth status` reports the storage backend,
+provider, username, scopes, and expiry, but never a token value.
 
-Expiry handling:
+## Refresh, expiry, and logout
 
-- A response that redirects to login or returns 401 invalidates the web session.
-  The CLI reports `AUTH_EXPIRED` and asks the user to log in again.
-- The vNext provider refreshes before the access token expires. A failed refresh
-  maps to `AUTH_EXPIRED`; it never retries with a stale token.
-- A 403 maps to `PERMISSION_DENIED`, not to a silent retry.
-- Logout removes local state even if a revocation call fails. It reports the
-  partial failure, because a token that could not be revoked is a risk the user
-  must know about.
+- **Refresh:** when a `refresh_token` is present, exchange it at
+  `/oauth/token` with `grant_type=refresh_token`. If the response has no refresh
+  token, keep the old one only if the server's rotation policy is known; until
+  DTI answers, assume the old token may be invalidated and do not reuse it. If
+  refresh is missing or rejected, mark the session as requiring a new browser
+  login (`AUTH_EXPIRED`).
+- **Expiry:** treat `expires_in` from the token response as authoritative. The
+  documented example is 3600 seconds; do not hard-code it as a guarantee.
+- **Refresh failure:** never retry with a stale token. Map a rejected refresh to
+  `AUTH_EXPIRED` and tell the user to run `auth login` again.
+- **Logout:** delete the local keyring entry and fallback file first. A public
+  client cannot call `/oauth/introspect` or `/oauth/revoke` because both require
+  HTTP Basic client authentication. Open `/oauth/logout` in the browser with
+  `id_token_hint` when an ID token is available, and optionally
+  `post_logout_redirect_uri` and `state`. If the ID token is unavailable, open
+  logout without a hint and tell the user the server-side session may remain
+  active. Report partial failures; do not claim success when local deletion
+  succeeded but the browser logout failed.
+- **Web logout:** delete the cookie jar. The portal may still consider the
+  server-side session active; report that limitation.
 
 ## Failure modes
 
 | Failure | Detection | User-visible result | Mitigation |
 |---|---|---|---|
-| Wrong username or password | Login response is not authenticated. | `AUTH_FAILED`, no retry loop. | Prompt again only on explicit user action. |
-| CAPTCHA | Challenge page in the fallback chain. | Interactive prompt. | User answers; no OCR service; browser fallback. |
-| MFA | SSO page asks for a second factor. | `AUTH_FAILED` with a browser hint. | Browser SSO is the long-term fix. |
-| Rate limit | HTTP 429 or a documented retry signal. | `RATE_LIMITED`, exit 4. | Honor `Retry-After`; no aggressive retry. |
-| Expired session | 401 or redirect to login. | `AUTH_EXPIRED`, exit 3. | Re-authenticate. |
-| WAF or bot challenge | Non-JSON HTML, 403, or an unexpected challenge. | `PERMISSION_DENIED` or `UPSTREAM_CHANGED` with a browser hint. | Stop; do not evade. |
-| Upstream shape change | Missing JSON field or unexpected status. | `UPSTREAM_CHANGED`, exit 5. | Fixture update, canary, feature flag. |
-| Missing vNext client | No client ID configured. | `CONFIG`, exit 1. | Explain how to supply an authorized client; never embed one. |
-| Network failure | Timeout or connection error. | `NETWORK`, exit 4. | Bounded retry with backoff for idempotent reads. |
-| Account inactive | Documented response field. | `AUTH_FAILED` with the upstream message, redacted. | No workaround. |
+| Missing `client_id` | `SIMASTER_CLIENT_ID` absent with `--method browser` or a browser `auto` path. | `CONFIG`, exit 1. | Explain DTI registration; offer `--method web`. |
+| Redirect mismatch | Authorization endpoint returns `redirect_uri` error or the listener never receives a callback. | `AUTH_FAILED` with the registered URI and a redacted error. | Check DTI registration; default port 53682. |
+| Consent denied | `error=access_denied` on the callback. | `AUTH_FAILED`; no token stored. | Explain that read-only scopes are required. |
+| CAS/MFA challenge | SSO page asks for an additional factor. | Browser flow can complete; web flow returns `AUTH_FAILED` with a browser hint. | Use browser PKCE where possible. |
+| Rate limit | HTTP 429 or `Retry-After`. | `RATE_LIMITED`, exit 4. | Honor `Retry-After`; bounded retries only. |
+| Expired access token | Resource call returns 401, or `exp` has passed. | `AUTH_EXPIRED`, exit 3. | Refresh once; otherwise re-login. |
+| No refresh token | Token response has no `refresh_token` or refresh is rejected. | `AUTH_EXPIRED` when the access token expires. | Re-run browser login. |
+| HTML 401 | `/api/me` or `/user/me` returns an HTML body with 401. | `AUTH_REQUIRED` or `AUTH_EXPIRED`, not `JSON`/`INTERNAL`. | Classify by status and stored-session state; redact the body. |
+| Discovery scheme quirk | Discovery `issuer` and endpoints omit `https://`. | Fail closed if the ID-token `iss` does not match the literal issuer. | Record the inconsistency; validate exact metadata; normalize transport only. |
+| DTI confidential-only | DTI cannot register a public client. | Browser PKCE unavailable. | Do not ship a secret; keep web fallback; allow a user-registered confidential client or a future BFF RFC. |
+| Upstream change | Missing field, unexpected status, or changed consent page. | `UPSTREAM_CHANGED`, exit 5. | Fixture update and canary; do not guess. |
 
 ## Threat model
 
 | Asset | Adversary | Mitigation |
 |---|---|---|
-| UGM password | Local malware, shoulder surfing, shell history, process list. | Prompt or stdin, no argv, no environment variable by default, no echo. |
-| Session cookie | Local file reader, log collector, backup. | Keyring first, `0600` fallback, no logs, logout deletes it. |
-| OAuth access/refresh token | Local file reader, log collector, crash reporter. | Keyring first, redaction, no token in URL or error, refresh rotation when supported. |
-| Authorization code | Another local app, redirect interception. | `state` + PKCE, loopback redirect, single-use code, never printed. |
-| Student data | Another user, a malicious agent, a shared terminal. | Own-account use, read-only default, no multi-user tokens, no caching of sensitive data by default. |
-| Build and release artifacts | Supply-chain attacker. | Locked dependencies, cargo-deny, Dependabot, signed tags, review of workflow changes. |
+| UGM password | Local malware, shoulder surfing, shell history, process list. | Browser PKCE avoids the password; web fallback uses a prompt or stdin, never argv. |
+| Authorization code | Another local app, redirect interception. | PKCE S256, one-time `state`, one-shot loopback listener, single-use code, no code logging. |
+| ID token | Token substitution, replay, wrong audience. | RS256 signature via JWKS, `iss`, `aud`, `exp`, `nonce`, `kid`, algorithm allowlist. |
+| Access/refresh token | Local file reader, log collector, crash report. | Keyring first, `0600` fallback, redaction, no token in URL, logout deletes local state. |
+| Session cookie | Local file reader, shared terminal. | Keyring first, no logs, logout; web fallback is explicitly lower assurance. |
+| Student data | Another user, malicious agent, shared terminal. | Own account only, read-only scopes, no multi-user token reuse, no caching by default. |
+| Loopback listener | A local process racing the callback. | Bind to `127.0.0.1`, one-shot accept, exact `state`, short timeout, close immediately. |
+| Build/release | Supply-chain attacker. | Locked dependencies, cargo-deny, Dependabot, signed tags, reviewed workflow changes, no shipped secret. |
 
 The CLI does not defend against a compromised operating system or a user who
 shares their own credentials. It does defend against accidental disclosure in
-its own output and logs.
+its own output, logs, and storage.
+
+## Secret policy
+
+- The official mobile app's embedded client secret and client ID are never
+  copied, bundled, committed, logged, or documented as values. The mobile
+  custom-scheme redirect is not used by this CLI.
+- A public/native UGM ID client has **no client secret**. `SIMASTER_CLIENT_SECRET`
+  exists only for a confidential client and is classified as
+  confidential-client-only/experimental. It is read from the environment or
+  keyring and never shipped.
+- If DTI requires a confidential client, do not ship a secret. Keep the web
+  fallback, let a user supply their own registered client, or revisit a
+  backend-for-frontend in a future RFC. No backend-for-frontend exists in v0.
+- The `password` grant is not used. The CLI never stores a UGM password.
+- Tokens are bearer credentials. They are never passed in a URL, written to a
+  log, or included in a crash report.
+- Placeholders in documentation use `<client-id>`, `<client-secret>`,
+  `<access-token>`, `<refresh-token>`, and `<id-token>`. A real value is never
+  committed.
 
 ## Responsible use
 
 - Use only your own account and your own data.
-- Do not share, pool, sell, or reuse sessions or tokens across users.
-- Do not use the CLI to access another person's records, even if an endpoint
-  appears to allow it.
+- Do not share, pool, sell, or reuse tokens across users.
+- Do not use the CLI to access another person's records, including through
+  `/user/username/{username}`. That endpoint is out of scope.
 - Do not bypass CAPTCHA, MFA, rate limits, or authorization.
 - Do not run load tests or scans against UGM systems.
+- Do not request write scopes. The CLI is read-only.
 - Follow UGM policy and applicable law. If a feature is not permitted, do not
   add it.
-- Report upstream vulnerabilities to UGM, not in this project's public issue
-  tracker.
 
 ## Revisit triggers
 
 Review this decision when:
 
-- UGM registers an OAuth client for CLI or native use, or publishes a supported
-  API;
-- UGM makes MFA mandatory for all students;
-- the web session or CAS flow breaks in a way that cannot be fixed without a
-  browser;
-- the OAuth server requires PKCE or changes its redirect policy;
-- token lifetimes or refresh behavior change;
-- a security review finds credential handling below the standard in this
-  document.
+- DTI approves or rejects a public/native client with `none` and PKCE;
+- DTI requires a confidential client or a backend-for-frontend;
+- UGM makes MFA mandatory in a way that affects the web fallback;
+- the vNext gateway accepts (or rejects) the UGM ID access token;
+- UGM fixes the discovery issuer/scheme inconsistency or changes the PKCE
+  metadata;
+- token lifetimes, refresh rotation, or rate limits are documented;
+- the web session or CAS fallback breaks;
+- a security review finds a gap in PKCE, state, nonce, loopback, ID-token, or
+  storage handling.
 
-The review is an RFC under [`GOVERNANCE.md`](../GOVERNANCE.md) if it changes the
-default method, the storage model, or the scope policy.
+A change to the default method, storage model, scope policy, or client type is
+an RFC under [`GOVERNANCE.md`](../GOVERNANCE.md).

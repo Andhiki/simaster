@@ -17,8 +17,10 @@ In scope:
 
 - A Rust CLI for students to read their own SIMASTER data.
 - A stable JSON contract and documented exit codes for automation.
-- Authentication through the web session and CAS fallback, with an optional
-  experimental vNext OAuth provider.
+- Authentication through the official UGM ID OAuth 2.0/OIDC service with
+  browser PKCE, and the web session with CAS fallback while registration is
+  pending.
+- vNext as a read-only data adapter, never as an authentication path.
 - Documentation of endpoint evidence, stability, and provenance.
 - A future read-only API surface and a separate MCP server.
 
@@ -29,6 +31,8 @@ In scope:
 - Bypassing authentication, authorization, CAPTCHA, or MFA controls.
 - Copying, shipping, or documenting the official mobile app's embedded client
   secret as a usable credential.
+- Using the vNext gateway as an authentication provider or adding a
+  mobile-client auth path.
 - Write operations by default. Writes are a later, opt-in milestone.
 - An official UGM product. The project is unofficial and makes no affiliation
   claim.
