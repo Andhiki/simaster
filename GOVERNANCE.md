@@ -47,9 +47,9 @@ without voting or merge rights, and may return by accepting current governance.
 
 ## Repository ownership
 
-- **Home:** `pendopo-dev/simaster`; the previous `Andhiki/simaster` URL redirects.
+- **Home:** `pendopo-dev/simaster`.
 - **CODEOWNERS:** `@Andhiki` and `@vityasyyy` own the repository and the auth, API, and workflow paths. Update the file when a team exists.
-- **Settings and migration:** the owner runbook, including access, teams, and organization migration, is tracked in the [repository settings issue](https://github.com/pendopo-dev/simaster/issues/49).
+- **Settings and teams:** the owner runbook, including access and teams, is tracked in the [repository settings issue](https://github.com/pendopo-dev/simaster/issues/49).
 
 ## Security and conduct
 
