@@ -27,6 +27,12 @@
 - No `#[path = "..."]`.
 - No `include!`.
 
+## Documentation
+
+- Repository docs describe current state only. No plans, milestones, or delivery history.
+- Task state lives in GitHub Issues/milestones; scratchpads live in gitignored `docs/plans/`.
+- Human docs are indexed from `README.md`; agent instructions are `AGENTS.md` and `docs/agents/`.
+
 ## Agent skills
 
 ### Issue tracker

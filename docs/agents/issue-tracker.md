@@ -13,23 +13,11 @@ Never file a ticket for work already done. Never split a spec into per-file or p
 
 ## Milestones
 
-Phases are native GitHub milestones, not labels. `gh` has no `milestone` subcommand: assign with `--milestone`, manage with `gh api`.
+Phases are native GitHub milestones. Discover them; do not duplicate the list in repository docs:
 
-| Milestone | Scope |
-| --- | --- |
-| `M2 — Auth and identity` | UGM ID login, profile, and the DTI client registration that gates it |
-| `M3 — Read commands` | Read commands and their adapters |
-| `M4 — Agent surface` | Machine-facing output and the MCP server |
-| `M5 — Write operations` | Opt-in write operations |
-| `M6 — Release and partnership` | Packaging, signing, and upstream partnership |
+    gh api repos/{owner}/{repo}/milestones --jq '.[] | "\(.number)\t\(.title)"'
 
-M0 and M1 are complete and have no milestone.
-
-```bash
-gh api repos/{owner}/{repo}/milestones --jq '.[] | "\(.number)\t\(.title)"'
-gh issue create --milestone "M3 — Read commands" --title "..." --body-file -
-gh issue list --milestone "M3 — Read commands"
-```
+`gh` has no `milestone` subcommand: assign with `--milestone`, manage with `gh api`, and list with `gh issue list --milestone "<title>"`.
 
 ## Labels
 

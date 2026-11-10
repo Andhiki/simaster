@@ -1,5 +1,5 @@
-# Global owners. Update to organization teams after the migration described in
-# docs/REPO-SETUP.md; do not guess a team name before it exists.
+# Global owners. Update to organization teams after the migration tracked in
+# issue #49; do not guess a team name before it exists.
 * @Andhiki @vityasyyy
 
 # Authentication and credential handling require both owners.
@@ -9,7 +9,6 @@
 
 # API adapters and endpoint evidence require both owners.
 /src/api/ @Andhiki @vityasyyy
-/docs/API-MAP.md @Andhiki @vityasyyy
 
 # CI and release workflows require both owners.
 /.github/workflows/ @Andhiki @vityasyyy
