@@ -6,16 +6,17 @@ info:
   license:
     name: MIT OR Apache-2.0
   description: |
-    The `simaster.ugm.ac.id` portal surface (L3 in `docs/API-MAP.md`), documented
-    from captured browser traffic and prior-art client analysis.
+    The `simaster.ugm.ac.id` portal surface (the web-session data surface),
+    documented from captured browser traffic and prior-art client analysis.
 
-    Evidence rules (see `docs/API-MAP.md` and issue #51):
+    Evidence rules (see issue #51):
 
     - Every operation carries `x-provenance` (the capture or client file the
       claim comes from), `x-status`, and `x-live-tested`.
-    - `x-status` uses the `docs/API-MAP.md` status legend. Nothing on this
-      surface is documented by UGM, so every operation is `unverified` —
-      upstream behavior is observed, not guaranteed.
+    - `x-status` uses the repository's evidence vocabulary: an endpoint claim
+      is either `documented by UGM` or `unverified`. Nothing on this surface
+      is documented by UGM, so every operation is `unverified` — upstream
+      behavior is observed, not guaranteed.
     - `x-live-tested: true` means the behavior was observed in captured
       traffic: user-supplied HAR captures from 2026-11-11, recorded with
       authorization in issue #52. `x-live-tested: false` marks prior-art

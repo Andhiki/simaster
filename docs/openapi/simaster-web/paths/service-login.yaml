@@ -11,7 +11,7 @@ post:
     The CAS fallback (`signin_proses` → `sso.ugm.ac.id/cas/login` → CAPTCHA)
     is the behavior confirmed by capture; see those operations.
   security: []
-  x-provenance: 'prior-art: sultandevin/sedang-kkn src/utils/simaster.py; row in docs/API-MAP.md'
+  x-provenance: 'prior-art: sultandevin/sedang-kkn src/utils/simaster.py'
   x-status: unverified
   x-live-tested: false
   requestBody:
