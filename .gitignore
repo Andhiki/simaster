@@ -22,3 +22,7 @@ tarpaulin-report.*
 .idea/
 .vscode/
 *.swp
+
+# Agent task state and worker reports
+docs/plans/
+WORKER-REPORT.md

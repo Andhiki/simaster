@@ -41,11 +41,13 @@ Remove credentials, tokens, cookies, names, NIU numbers, and personal data.
 
 - [ ] The change has tests, or the PR explains why a test is not applicable.
 - [ ] Tests and the behavior change are in the same commit.
-- [ ] Documentation and the changelog are updated when behavior changes.
+- [ ] Docs updated when behavior changes; no changelog file is maintained.
+- [ ] Docs are current-state; no plans, milestones, or delivery history.
+- [ ] No `docs/plans/`, `WORKER-REPORT.md`, or planning docs.
 - [ ] No passwords, cookies, tokens, client secrets, or authorization codes.
 - [ ] No real student names, NIU numbers, grades, schedules, or attendance data.
 - [ ] The official mobile app's client ID and embedded secret are not included.
-- [ ] Endpoint changes update `docs/API-MAP.md` with provenance and stability.
+- [ ] Endpoint changes update `docs/AUTH.md` or the relevant issue with provenance and stability.
 - [ ] A breaking change is labelled `breaking-change` and has an RFC.
 - [ ] Required CI checks are green.
 - [ ] One approval is requested; auth, security, release, and breaking changes
