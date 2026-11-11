@@ -2,9 +2,9 @@ blank_issues_enabled: false
 
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/Andhiki/simaster/security/advisories/new
+    url: https://github.com/pendopo-dev/simaster/security/advisories/new
     about: Report a vulnerability privately. Do not open a public issue.
 
   - name: Questions and usage help
-    url: https://github.com/Andhiki/simaster/discussions
+    url: https://github.com/pendopo-dev/simaster/discussions
     about: Ask a question or share an idea in Discussions.
