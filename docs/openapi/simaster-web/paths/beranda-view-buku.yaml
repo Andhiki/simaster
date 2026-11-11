@@ -1,0 +1,19 @@
+get:
+  operationId: berandaViewBuku
+  tags: [beranda]
+  summary: Dashboard partial — student handbook (large).
+  description: |
+    HTML fragment loaded into the dashboard shell. The largest observed
+    partial (~85 KB) — the student handbook content.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  responses:
+    '200':
+      description: HTML partial.
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlBody.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

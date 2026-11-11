@@ -7,9 +7,15 @@ implementation must follow.
 **Evidence status:** the official UGM ID behavior below is **documented by UGM**
 (OpenAPI 3.1, OIDC discovery, Swagger UI, and the Developer section of the UGM ID
 portal). It is **not live-tested**, except the public unauthenticated `/health`
-check. The vNext gateway and web session behavior remains prior-art/static
-evidence and is `unverified`. See [`UGM-ID-API.md`](UGM-ID-API.md) for the full
-official API reference and [`API-MAP.md`](API-MAP.md) for the endpoint registry.
+check. The vNext gateway behavior remains prior-art/static evidence and is
+`unverified`. The web session login flow and the akademik/beranda pages are
+additionally backed by captured traffic (user-supplied HARs from 2026-11-11,
+recorded in issue #52); captured observations are evidence, not a guaranteed
+contract, and remain `unverified` in the API-MAP status vocabulary. The
+observed web login flow is specified in
+[`openapi/simaster-web/openapi.yaml`](openapi/simaster-web/openapi.yaml).
+See [`UGM-ID-API.md`](UGM-ID-API.md) for the full
+official API reference and [`API-MAP.md`](API-MAP.md) for the endpoint registry. The observed web login flow is specified in [`openapi/simaster-web/openapi.yaml`](openapi/simaster-web/openapi.yaml).
 
 ## Decision
 

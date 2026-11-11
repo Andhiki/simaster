@@ -1,0 +1,72 @@
+get:
+  operationId: captchaVerificationPage
+  tags: [auth]
+  summary: CAPTCHA challenge page.
+  description: |
+    Returns the sound-CAPTCHA challenge page. The page HTML carries the
+    `simasterUGM_token` CSRF field that the verification POST echoes back.
+  security: []
+  x-provenance: 'HAR capture 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  responses:
+    '200':
+      description: CAPTCHA challenge page (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlBody.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'
+post:
+  operationId: captchaVerificationSubmit
+  tags: [auth]
+  summary: Submit the CAPTCHA answer; establishes the session.
+  description: |
+    Submits the CAPTCHA answer together with the `simasterUGM_token` CSRF
+    value from the challenge page. On success the portal issues the
+    `simaster-ugm_sess` session cookie and redirects to the dashboard.
+
+    Failure semantics from prior art: a wrong answer redirects back to a
+    fresh challenge page (new `simasterUGM_token`); a redirect landing on a
+    `login`/`signin` URL means the session was lost and the whole login must
+    restart. The failure status code was not captured; treat any non-302 as
+    "retry the challenge".
+
+    Solving the CAPTCHA programmatically is a non-goal of this project; a
+    human completes this step (directly, or by importing a session cookie —
+    the "Cookie import" candidate in `docs/AUTH.md`).
+  security: []
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  requestBody:
+    required: true
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          properties:
+            simasterUGM_token:
+              type: string
+              description: CSRF token from the challenge page HTML.
+            captcha:
+              type: string
+              description: The human-solved CAPTCHA answer.
+          required: [simasterUGM_token, captcha]
+  responses:
+    '302':
+      description: |
+        Success. Redirects to `/beranda/beranda/`, which redirects to
+        `/beranda/beranda/view` (the dashboard shell).
+      headers:
+        Location:
+          schema: { type: string }
+    default:
+      description: |
+        Failure re-presents the challenge page. The failure status code was
+        not captured; treat any non-302 as "retry the challenge".
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlBody.yaml'

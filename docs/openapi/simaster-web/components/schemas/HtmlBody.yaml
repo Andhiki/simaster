@@ -1,0 +1,7 @@
+type: string
+description: |
+  An HTML fragment. This surface returns server-rendered HTML partials
+  (`X-Requested-With: XMLHttpRequest`, `Accept: text/html`), not JSON.
+  Response schemas throughout this document describe the HTTP behavior;
+  the HTML structure itself is documented by example captures, not
+  schemas, because the markup is not a contract.

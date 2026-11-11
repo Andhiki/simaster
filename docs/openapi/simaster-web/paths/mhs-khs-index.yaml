@@ -1,0 +1,16 @@
+get:
+  operationId: mhsKhsIndex
+  tags: [akademik]
+  summary: Index redirect for the transcript module.
+  description: Redirects to `/akademik/mhs_khs/view`; the module data lives at the `view` path.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  responses:
+    '302':
+      description: Redirect to `view`.
+      headers:
+        Location:
+          schema: { type: string }
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

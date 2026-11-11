@@ -1,0 +1,45 @@
+post:
+  operationId: serviceLogin
+  tags: [auth]
+  summary: Direct credential login (JSON).
+  description: |
+    Direct login against the portal: posts credentials, receives a JSON
+    result and the session cookie. Documented from prior-art client analysis
+    only; the recorded captures used the CAS path instead, so no request or
+    response body was observed.
+
+    The CAS fallback (`signin_proses` → `sso.ugm.ac.id/cas/login` → CAPTCHA)
+    is the behavior confirmed by capture; see those operations.
+  security: []
+  x-provenance: 'prior-art: sultandevin/sedang-kkn src/utils/simaster.py; row in docs/API-MAP.md'
+  x-status: unverified
+  x-live-tested: false
+  requestBody:
+    required: true
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          properties:
+            aId:
+              type: string
+              description: Portal form identifier (purpose not captured; treat as opaque).
+            username:
+              type: string
+            password:
+              type: string
+          required: [username, password]
+  responses:
+    '200':
+      description: |
+        JSON login result with `isLogin` and `namaLengkap`, plus the session
+        cookie. Exact response schema is prior-art-derived and unverified.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              isLogin: { type: boolean }
+              namaLengkap: { type: string }
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

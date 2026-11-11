@@ -1,0 +1,112 @@
+openapi: 3.1.0
+info:
+  title: SIMASTER Web API
+  version: 0.1.0
+  summary: Session-cookie HTML API behind UGM CAS SSO.
+  license:
+    name: MIT OR Apache-2.0
+  description: |
+    The `simaster.ugm.ac.id` portal surface (L3 in `docs/API-MAP.md`), documented
+    from captured browser traffic and prior-art client analysis.
+
+    Evidence rules (see `docs/API-MAP.md` and issue #51):
+
+    - Every operation carries `x-provenance` (the capture or client file the
+      claim comes from), `x-status`, and `x-live-tested`.
+    - `x-status` uses the `docs/API-MAP.md` status legend. Nothing on this
+      surface is documented by UGM, so every operation is `unverified` —
+      upstream behavior is observed, not guaranteed.
+    - `x-live-tested: true` means the behavior was observed in captured
+      traffic: user-supplied HAR captures from 2026-11-11, recorded with
+      authorization in issue #52. `x-live-tested: false` marks prior-art
+      claims only. Sanitized fixtures and contract tests land with the M3
+      read adapters (issue #40); until then these captures are the only
+      recorded evidence.
+    - Responses are **HTML fragments, not JSON**. Data extraction requires HTML
+      parsing; there is no observed JSON envelope on this surface.
+    - Authentication is a CAS v1 login form (`sso.ugm.ac.id`), followed by a
+      mandatory CAPTCHA challenge. The full observed flow:
+
+      1. `GET sso.ugm.ac.id/cas/login` — login form, supplies the `lt` field.
+      2. `POST sso.ugm.ac.id/cas/login` — `302` to `signin_proses?ticket=…`.
+      3. `GET /ugmfw/signin_simaster/signin_proses` — redirect chain to the
+         CAPTCHA page (includes an `http`→`https` round-trip).
+      4. `GET /ugmfw/signin_simaster/captchasound_verification`.
+      5. `POST /ugmfw/signin_simaster/captchasound_verification` — `302` to
+         `/beranda/beranda/` on success.
+
+    - Write operations are out of scope for this surface (milestone M5 governs
+      any future writes).
+servers:
+  - url: https://simaster.ugm.ac.id
+tags:
+  - name: auth
+    description: CAS login and CAPTCHA-gated session establishment.
+  - name: beranda
+    description: Dashboard HTML partials.
+  - name: akademik
+    description: Student academic data pages (HTML).
+security:
+  - sessionCookie: []
+paths:
+  /cas/login:
+    $ref: './paths/cas-login.yaml'
+  /services/simaster/service_login:
+    $ref: './paths/service-login.yaml'
+  /ugmfw/signin_simaster/signin_proses:
+    $ref: './paths/signin-proses.yaml'
+  /ugmfw/signin_simaster/captchasound_verification:
+    $ref: './paths/captchasound-verification.yaml'
+  /ugmfw/signin_simaster/captcha_sound/:
+    $ref: './paths/captcha-sound.yaml'
+  /ugmfw/signin_simaster/captcha_sound_play:
+    $ref: './paths/captcha-sound-play.yaml'
+  /beranda/beranda/view:
+    $ref: './paths/beranda-view.yaml'
+  /beranda/beranda/view_menu_favorit:
+    $ref: './paths/beranda-view-menu-favorit.yaml'
+  /beranda/beranda/view_akun:
+    $ref: './paths/beranda-view-akun.yaml'
+  /beranda/beranda/view_agenda:
+    $ref: './paths/beranda-view-agenda.yaml'
+  /beranda/beranda/view_notifikasi:
+    $ref: './paths/beranda-view-notifikasi.yaml'
+  /beranda/beranda/view_attribute:
+    $ref: './paths/beranda-view-attribute.yaml'
+  /beranda/beranda/view_fitur:
+    $ref: './paths/beranda-view-fitur.yaml'
+  /beranda/beranda/view_important:
+    $ref: './paths/beranda-view-important.yaml'
+  /beranda/beranda/view_buku:
+    $ref: './paths/beranda-view-buku.yaml'
+  /akademik/data_mahasiswa/:
+    $ref: './paths/data-mahasiswa-index.yaml'
+  /akademik/data_mahasiswa/view:
+    $ref: './paths/data-mahasiswa-view.yaml'
+  /akademik/data_mahasiswa/pddikti_krs:
+    $ref: './paths/data-mahasiswa-pddikti-krs.yaml'
+  /akademik/data_mahasiswa/pddikti_biodata:
+    $ref: './paths/data-mahasiswa-pddikti-biodata.yaml'
+  /akademik/data_mahasiswa/dokumen:
+    $ref: './paths/data-mahasiswa-dokumen.yaml'
+  /akademik/mhs_krs/:
+    $ref: './paths/mhs-krs-index.yaml'
+  /akademik/mhs_krs/view:
+    $ref: './paths/mhs-krs-view.yaml'
+  /akademik/mhs_khs/:
+    $ref: './paths/mhs-khs-index.yaml'
+  /akademik/mhs_khs/view:
+    $ref: './paths/mhs-khs-view.yaml'
+  /akademik/mhs_khs/content/{token}:
+    $ref: './paths/mhs-khs-content.yaml'
+  /akademik/mhs_kehadiran/:
+    $ref: './paths/mhs-kehadiran-index.yaml'
+  /akademik/mhs_kehadiran/view:
+    $ref: './paths/mhs-kehadiran-view.yaml'
+components:
+  securitySchemes:
+    sessionCookie:
+      $ref: './components/securitySchemes.yaml#/sessionCookie'
+  schemas:
+    HtmlBody:
+      $ref: './components/schemas/HtmlBody.yaml'
