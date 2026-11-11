@@ -1,0 +1,5 @@
+description: Unexpected response. This surface returns HTML error pages, not a JSON error envelope; the observed status codes are listed per operation and anything else is treated as unknown behavior.
+content:
+  text/html:
+    schema:
+      $ref: '../schemas/HtmlFragment.yaml'

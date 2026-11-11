@@ -1,0 +1,76 @@
+get:
+  operationId: casLoginForm
+  tags: [auth]
+  summary: CAS login form.
+  description: |
+    The CAS v1 login form. Supplies the `lt` hidden token and the `service`
+    parameter that the credential POST echoes back. The form GET itself was
+    not inside any recorded capture; the field names are confirmed by the
+    captured POST and the prior-art client.
+  servers:
+    - url: https://sso.ugm.ac.id
+  security: []
+  x-provenance: 'prior-art: sultandevin/sedang-kkn src/utils/simaster.py (lt extraction); POST confirmed by HAR'
+  x-status: unverified
+  x-live-tested: false
+  responses:
+    '200':
+      description: CAS login form (HTML) with `lt` token and `service` parameter.
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlFragment.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'
+post:
+  operationId: casLogin
+  tags: [auth]
+  summary: CAS credential login.
+  description: |
+    Submits credentials to UGM CAS. On success redirects to the SIMASTER
+    `signin_proses` with a one-time service ticket (`ST-…`).
+
+    Two observed URL variants: the browser capture posted to the plain
+    `/cas/login`; prior-art clients post to
+    `/cas/login;jsessionid={JSESSIONID}`. Both reached the same redirect.
+  servers:
+    - url: https://sso.ugm.ac.id
+  security: []
+  x-provenance: 'HAR capture 2026-11-11 (plain path, field names) and prior-art sultandevin/sedang-kkn src/utils/simaster.py (jsessionid variant, submit value), recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  requestBody:
+    required: true
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+            password:
+              type: string
+              format: password
+            lt:
+              type: string
+              description: One-time login token from the CAS login form HTML.
+            _eventId:
+              type: string
+              description: CAS webflow event; observed value `submit`.
+            submit:
+              type: string
+              description: Observed value `LOGIN` (prior art).
+            service:
+              type: string
+              description: Service URL to redirect back to; carried over from the login form.
+          required: [username, password, lt, _eventId]
+  responses:
+    '302':
+      description: |
+        Success. Redirects to
+        `https://simaster.ugm.ac.id/ugmfw/signin_simaster/signin_proses?ticket=ST-…`.
+      headers:
+        Location:
+          schema: { type: string }
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

@@ -1,0 +1,19 @@
+get:
+  operationId: berandaView
+  tags: [beranda]
+  summary: Dashboard shell.
+  description: |
+    The dashboard shell page loaded after login (the target of the login
+    redirect chain). The shell then fetches the `view_*` partials.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  responses:
+    '200':
+      description: Dashboard shell (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlFragment.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

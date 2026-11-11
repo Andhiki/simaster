@@ -9,7 +9,7 @@ implementation must follow.
 portal). It is **not live-tested**, except the public unauthenticated `/health`
 check. The vNext gateway and web session behavior remains prior-art/static
 evidence and is `unverified`. See [`UGM-ID-API.md`](UGM-ID-API.md) for the full
-official API reference and [`API-MAP.md`](API-MAP.md) for the endpoint registry.
+official API reference and [`API-MAP.md`](API-MAP.md) for the endpoint registry. The observed web login flow is specified in [`openapi/simaster-web/openapi.yaml`](openapi/simaster-web/openapi.yaml).
 
 ## Decision
 

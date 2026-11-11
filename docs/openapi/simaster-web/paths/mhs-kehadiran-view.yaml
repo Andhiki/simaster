@@ -1,0 +1,19 @@
+get:
+  operationId: mhsKehadiranView
+  tags: [akademik]
+  summary: Attendance page.
+  description: |
+    The attendance page (~7 KB HTML). Candidate backing page for a future
+    `attendance` command; content requires HTML parsing.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  responses:
+    '200':
+      description: Attendance page (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlFragment.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

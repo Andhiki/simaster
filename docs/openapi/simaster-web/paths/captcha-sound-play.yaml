@@ -1,0 +1,20 @@
+get:
+  operationId: captchaSoundPlay
+  tags: [auth]
+  summary: Audio CAPTCHA playback variant.
+  description: |
+    Alternative audio CAPTCHA endpoint observed alongside `captcha_sound/`.
+    Exact difference from `captcha_sound/` was not captured; both returned
+    `200` audio during login.
+  security: []
+  x-provenance: 'HAR capture 2026-11-11, recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  responses:
+    '200':
+      description: Audio asset.
+      content:
+        audio/*:
+          schema: { type: string, format: binary }
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

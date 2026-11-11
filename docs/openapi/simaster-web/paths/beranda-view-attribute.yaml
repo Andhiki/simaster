@@ -1,0 +1,17 @@
+get:
+  operationId: berandaViewAttribute
+  tags: [beranda]
+  summary: Dashboard partial — user attributes.
+  description: HTML fragment loaded into the dashboard shell by the portal frontend.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  responses:
+    '200':
+      description: HTML partial.
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlFragment.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

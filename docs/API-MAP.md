@@ -36,7 +36,7 @@ data surfaces; neither is an authentication path.
 |---|---|---|---|---|---|
 | L0 | UGM ID OAuth 2.0/OIDC | Browser PKCE S256; public client; Bearer access token. | Identity, ID token, basic and full profile. | Documented by UGM; live-tested no (except public `/health`). | Read-only; `openid profile email user.read userDetail.read`. |
 | L2 | vNext gateway | Bearer UGM ID token; `UGMFWSERVICE: 1`. Token acceptance is `unverified`. | Simaster data by service label. | `unverified`; prior-art evidence. | Read-only if accepted; otherwise use L3. |
-| L3 | Web session | Username/password; session cookie; CAS fallback. | Simaster data: profile, schedule, grades, attendance. | `unverified`; prior-art evidence. | Read-only. |
+| L3 | Web session | Username/password; session cookie; CAS fallback. | Simaster data: profile, schedule, grades, attendance. | OpenAPI: [`simaster-web`](openapi/simaster-web/openapi.yaml) (Scalar: `docs/api/index.html`). | Read-only. |
 | — | Staff gateway and legacy presensi | Staff Bearer or client-derived credentials. | Staff data and attendance writes. | `blocked; unverified`. | Out of scope. |
 
 ## Endpoint registry

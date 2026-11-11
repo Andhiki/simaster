@@ -1,0 +1,20 @@
+get:
+  operationId: mhsKhsView
+  tags: [akademik]
+  summary: Transcript of grades (KHS) page.
+  description: |
+    The KHS page (~9 KB HTML). Lists transcript documents; each document is
+    opened through `/akademik/mhs_khs/content/{token}`. Candidate backing
+    page for a future `grades` command; content requires HTML parsing.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  responses:
+    '200':
+      description: KHS page (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlFragment.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

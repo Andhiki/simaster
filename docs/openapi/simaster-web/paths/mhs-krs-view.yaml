@@ -1,0 +1,19 @@
+get:
+  operationId: mhsKrsView
+  tags: [akademik]
+  summary: Study plan (KRS) page.
+  description: |
+    The KRS page (~8.5 KB HTML). Candidate backing page for a future
+    `schedule` command; content requires HTML parsing.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: verified
+  x-live-tested: true
+  responses:
+    '200':
+      description: KRS page (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlFragment.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'
