@@ -1,0 +1,20 @@
+get:
+  operationId: dataMahasiswaView
+  tags: [akademik]
+  summary: Student data page.
+  description: |
+    The main student-data page (largest observed akademik page, ~64 KB HTML).
+    Candidate backing page for a future `profile` command; content requires
+    HTML parsing.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  responses:
+    '200':
+      description: Student data page (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlBody.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

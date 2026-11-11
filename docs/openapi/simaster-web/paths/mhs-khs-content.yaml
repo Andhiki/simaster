@@ -1,0 +1,28 @@
+get:
+  operationId: mhsKhsContent
+  tags: [akademik]
+  summary: Transcript document content.
+  description: |
+    Returns a transcript document referenced by the KHS page. The `{token}`
+    path parameter is an opaque encrypted identifier taken from the KHS page
+    HTML — it is per-session and must never be recorded. Observed responses
+    were HTML (a document viewer, ~6–13 KB); the underlying document bytes,
+    if any, were not captured.
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  parameters:
+    - name: token
+      in: path
+      required: true
+      description: Opaque encrypted document identifier from the KHS page HTML.
+      schema: { type: string }
+  responses:
+    '200':
+      description: Document viewer page (HTML).
+      content:
+        text/html:
+          schema:
+            $ref: '../components/schemas/HtmlBody.yaml'
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

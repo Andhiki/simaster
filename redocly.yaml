@@ -1,0 +1,12 @@
+# Lint configuration for the OpenAPI documents under docs/openapi/ (issue #51).
+# Two upstream realities override the default rules:
+#
+# - no-path-trailing-slash: the observed portal paths really do end in `/`
+#   (the slashed paths are the ones that 302); documenting them without the
+#   slash would misrepresent the surface.
+# - operation-4xx-response: this surface redirects unauthenticated requests
+#   instead of answering 4xx, and no 4xx behavior was captured. Inventing one
+#   would be undocumented claims.
+rules:
+  no-path-trailing-slash: off
+  operation-4xx-response: off

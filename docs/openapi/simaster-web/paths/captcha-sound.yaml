@@ -1,0 +1,26 @@
+get:
+  operationId: captchaSound
+  tags: [auth]
+  summary: Audio CAPTCHA asset.
+  description: |
+    The sound CAPTCHA audio for the current challenge. Observed being fetched
+    twice per login (reload before solving). Cache-busted with a `_` query
+    parameter by the portal frontend.
+  security: []
+  x-provenance: 'HAR captures 2026-11-11, recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  parameters:
+    - name: _
+      in: query
+      required: false
+      description: Cache-buster timestamp added by the portal frontend.
+      schema: { type: string }
+  responses:
+    '200':
+      description: Audio asset.
+      content:
+        audio/*:
+          schema: { type: string, format: binary }
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

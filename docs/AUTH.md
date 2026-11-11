@@ -1,6 +1,6 @@
 # Authentication
 
-This document covers the authentication decision, official endpoints, PKCE flow, web fallback, storage, and security rules. Authentication and API adapters are not implemented yet; this is the design and evidence record. **Evidence status:** official UGM ID behavior is **documented by UGM** and **not live-tested** except the public `/health` check; vNext and web-session behavior is prior-art/static evidence and `unverified`.
+This document covers the authentication decision, official endpoints, PKCE flow, web fallback, storage, and security rules. Authentication and API adapters are not implemented yet; this is the design and evidence record. **Evidence status:** official UGM ID behavior is **documented by UGM** and **not live-tested** except the public `/health` check; vNext behavior is prior-art/static evidence and `unverified`. The web-session login flow and the akademik/beranda pages are additionally backed by captured traffic (user-supplied HARs from 2026-11-11, recorded in issue #52); captured observations are evidence, not a guaranteed contract, and remain `unverified`. The observed web login flow is specified in [`openapi/simaster-web/openapi.yaml`](openapi/simaster-web/openapi.yaml).
 
 ## Decision
 

@@ -1,0 +1,45 @@
+get:
+  operationId: signinProses
+  tags: [auth]
+  summary: CAS hand-off and ticket validation; leads to the CAPTCHA challenge.
+  description: |
+    Serves two roles depending on the query:
+
+    - **Without `ticket`:** redirects (`302`) to the CAS login page on
+      `sso.ugm.ac.id` (with a `service` parameter). Prior-art clients use
+      this to obtain the `lt` token from the CAS login form HTML.
+    - **With `ticket`:** validates the CAS service ticket and continues the
+      login. Observed redirect chain: `301` to `https` when reached over
+      `http`, then `302` back to the same path over `http` (upstream
+      inconsistency — clients must tolerate mixed-scheme redirects), then
+      `302` to `/ugmfw/signin_simaster/captchasound_verification`.
+
+    The CAPTCHA challenge is mandatory on this path: every observed login
+    lands on the CAPTCHA page, so the web fallback cannot be fully automated.
+  security: []
+  x-provenance: 'HAR capture 2026-11-11 (ticket variant) and prior-art sultandevin/sedang-kkn src/utils/simaster.py (no-ticket variant), recorded in issue #52'
+  x-status: unverified
+  x-live-tested: true
+  parameters:
+    - name: ticket
+      in: query
+      required: false
+      description: CAS service ticket (`ST-…`) issued by the CAS login POST.
+      schema: { type: string }
+  responses:
+    '301':
+      description: Permanent redirect (scheme upgrade `http` → `https`).
+      headers:
+        Location:
+          schema: { type: string }
+    '302':
+      description: |
+        Next step of the login flow: the CAS login page on `sso.ugm.ac.id`
+        (no ticket), the same path over `http` (observed quirk), or
+        `/ugmfw/signin_simaster/captchasound_verification` once the ticket is
+        consumed.
+      headers:
+        Location:
+          schema: { type: string }
+    default:
+      $ref: '../components/responses/UnexpectedError.yaml'

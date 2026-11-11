@@ -1,0 +1,11 @@
+sessionCookie:
+  type: apiKey
+  in: cookie
+  name: simaster-ugm_sess
+  description: |
+    Portal session cookie issued after the CAS login and CAPTCHA verification
+    complete. Observed alongside `simasterUGM_cookie` (paired with the
+    `simasterUGM_token` CSRF form field) and the CAS cookies `CASTGC`,
+    `CASPRIVACY`, and `JSESSIONID` on `sso.ugm.ac.id`.
+
+    Observed cookie names only; values are never recorded in this repository.
